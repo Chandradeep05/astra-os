@@ -1,0 +1,44 @@
+# AI assistant workspace cache
+.gemini/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Secrets and local state — NEVER commit these
+backend/.env
+backend/local_session.json
+backend/astra_os.db
+backend/chroma_db/
+backend/uploads/
+backend/exports/
+backend/agent_output/
+
+# Test files (move to /tests/ in Phase 2 cleanup)
+backend/test_agent.py
+backend/test_ce.py
+backend/test_ce2.py
+backend/test_ce3.py
+backend/test_ce_genera*
+backend/bench_ollama.py
+
+# Frontend build artifacts
+frontend/.next/
+frontend/node_modules/
+frontend/.env.local
+
+# Logs
+*.log

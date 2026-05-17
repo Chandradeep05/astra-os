@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/api/v1/:path*",
+      "destination": "https://astra-os-backend.onrender.com/api/v1/:path*"
+    }
+  ]
+}

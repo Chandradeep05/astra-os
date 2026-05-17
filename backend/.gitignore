@@ -1,0 +1,42 @@
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Database files (local dev only)
+*.db
+*.sqlite3
+
+# ChromaDB local data
+chroma_db/
+
+# Uploads (user data — never commit)
+uploads/
+
+# Exports (generated files)
+exports/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

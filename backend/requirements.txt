@@ -1,0 +1,48 @@
+# ============================================
+# ASTRA OS — Backend Dependencies v3.0
+# ============================================
+
+# Core Framework
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+python-multipart
+python-dotenv
+
+# Database
+sqlalchemy
+sqlmodel
+
+# Vector Store
+chromadb
+
+# Document Processing
+python-docx
+pypdf
+python-pptx
+pandas
+openpyxl
+
+# HTTP Client (async)
+httpx
+aiohttp
+
+# Web Search (FREE — no API key needed)
+ddgs
+
+# Authentication — JWT removed (Phase 0: replaced by local session token)
+# python-jose[cryptography]   ← removed: no longer used
+# passlib[bcrypt]             ← removed: no longer used
+
+# Sandboxed Python Execution
+restrictedpython
+
+# Multi-Modal (optional — comment out if not using OCR/audio)
+pytesseract
+Pillow
+SpeechRecognition
+pydub
+
+# Production Server
+gunicorn
