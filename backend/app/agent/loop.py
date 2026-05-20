@@ -465,7 +465,7 @@ class AgentLoop:
                     yield AgentStreamEvent(
                         type="approval_required",
                         content=f"⚠️ Risky action requires approval: {func_name}",
-                        data={"tool": func_name, "arguments": func_args, "risk": risk.value},
+                        data={"tool": func_name, "arguments": func_args, "risk": risk.value, "task_id": state.task_id},
                     )
 
                     approved = await self.approval_gate.request_approval(
@@ -473,6 +473,7 @@ class AgentLoop:
                         arguments=func_args,
                         risk_level=risk,
                         description=tool_def.description,
+                        task_id=state.task_id,
                     )
 
                     if not approved:
