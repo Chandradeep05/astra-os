@@ -216,14 +216,14 @@ class AgentLoop:
                 if "summarize" in normalized_query and confidence == "high":
                     pass # Continue to loop for better summary formatting
             
-        # Token Budget Enforcement (MAX_CONTEXT_WINDOW = 4096)
+        # Token Budget Enforcement (MAX_CONTEXT_WINDOW = 8192)
         from app.utils.tokens import enforce_budget
         real_system_prompt = build_system_prompt(project_id) + "\n\n" + self._build_tool_prompt()
         history, pruned_chunks = enforce_budget(
             system_prompt=real_system_prompt,
             history=history,
             rag_chunks=chunks,
-            max_window=4096
+            max_window=8192
         )
         if should_force_doc:
             forced_doc_context = "\n\n".join(r["content"] for r in pruned_chunks)
@@ -465,7 +465,7 @@ class AgentLoop:
                     yield AgentStreamEvent(
                         type="approval_required",
                         content=f"⚠️ Risky action requires approval: {func_name}",
-                        data={"tool": func_name, "arguments": func_args, "risk": risk.value},
+                        data={"tool": func_name, "arguments": func_args, "risk": risk.value, "task_id": state.task_id},
                     )
 
                     approved = await self.approval_gate.request_approval(
@@ -473,6 +473,7 @@ class AgentLoop:
                         arguments=func_args,
                         risk_level=risk,
                         description=tool_def.description,
+                        task_id=state.task_id,
                     )
 
                     if not approved:

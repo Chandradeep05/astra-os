@@ -46,3 +46,6 @@ pydub
 
 # Production Server
 gunicorn
+
+# System stats
+psutil>=5.9.0
