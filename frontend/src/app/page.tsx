@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { ChatInterface } from "@/components/ChatInterface";
 import { AstraAgent } from "@/components/AstraAgent";
 import { Dashboard } from "@/components/Dashboard";
+import { MemoryBrowser } from "@/components/MemoryBrowser";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AnimatePresence, motion } from "framer-motion";
 
@@ -50,6 +51,19 @@ export default function Home() {
             >
               <ErrorBoundary>
                 <AstraAgent />
+              </ErrorBoundary>
+            </motion.div>
+          ) : activeProjectId === "memory-browser" ? (
+            <motion.div
+              key="memory-browser"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.4, ease: "circOut" }}
+              className="h-full w-full"
+            >
+              <ErrorBoundary>
+                <MemoryBrowser />
               </ErrorBoundary>
             </motion.div>
           ) : (

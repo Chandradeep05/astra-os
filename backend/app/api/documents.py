@@ -78,7 +78,13 @@ async def _background_parse_and_index(
         )
 
         if success:
-            _set_status(file_id, "done", "Indexed and ready", chunks=0)
+            file_ext = os.path.splitext(file_name)[1].lower()
+            try:
+                file_size = os.path.getsize(file_path)
+            except Exception:
+                file_size = 0
+
+            _set_status(file_id, "done", "Indexed and ready", chunks=success)
             logger.info(f"✅ Background indexing completed: {file_name}")
             await asyncio.to_thread(
                 audit_service.log_action,
@@ -99,19 +105,21 @@ async def _background_parse_and_index(
                 session.execute(
                     text("""
                         INSERT OR REPLACE INTO documents
-                          (file_id, filename, original_name, status, rag_enabled, project_id, chunk_count, uploaded_at)
+                          (file_id, filename, original_name, status, rag_enabled, project_id, chunk_count, uploaded_at, file_type, file_size_bytes)
                         VALUES
-                          (:file_id, :filename, :original_name, :status, :rag_enabled, :project_id, :chunk_count, :uploaded_at)
+                          (:file_id, :filename, :original_name, :status, :rag_enabled, :project_id, :chunk_count, :uploaded_at, :file_type, :file_size_bytes)
                     """),
                     {
                         "file_id": file_id,
-                        "filename": file_id + os.path.splitext(file_name)[1],
+                        "filename": file_id + file_ext,
                         "original_name": file_name,
                         "status": "active",
                         "rag_enabled": 1,
                         "project_id": project_id,
-                        "chunk_count": 0,
-                        "uploaded_at": datetime.utcnow().isoformat()
+                        "chunk_count": success,
+                        "uploaded_at": datetime.utcnow().isoformat(),
+                        "file_type": file_ext,
+                        "file_size_bytes": file_size
                     }
                 )
                 session.commit()

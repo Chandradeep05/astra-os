@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import uvicorn
 import logging
-from app.api import auth, chat, documents, projects, workflows, agent
+from app.api import auth, chat, documents, projects, workflows, agent, memory
 from app.db import create_db_and_tables
 from app.core.config import settings
 from contextlib import asynccontextmanager
@@ -75,6 +75,7 @@ app.include_router(documents.router, prefix="/api/v1/documents", tags=["Document
 app.include_router(projects.router, prefix="/api/v1/projects", tags=["Projects"])
 app.include_router(workflows.router, prefix="/api/v1/workflows", tags=["Workflows"])
 app.include_router(agent.router, prefix="/api/v1/agent", tags=["Agent"])
+app.include_router(memory.router, prefix="/api/v1/memory", tags=["Memory"])
 
 
 @app.get("/")

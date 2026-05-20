@@ -69,13 +69,75 @@ def create_db_and_tables():
                     rag_enabled INTEGER NOT NULL DEFAULT 1,
                     project_id  TEXT NOT NULL DEFAULT 'default',
                     chunk_count INTEGER NOT NULL DEFAULT 0,
-                    uploaded_at TEXT NOT NULL
+                    uploaded_at TEXT NOT NULL,
+                    file_type   TEXT,
+                    file_size_bytes INTEGER
                 )
             """))
             conn.commit()
             logger.info("Documents registry table initialized.")
         except Exception as e:
             logger.error(f"Error creating documents table: {e}")
+
+    # Phase 2 manual migration: Add columns to documents table if they don't exist
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("ALTER TABLE documents ADD COLUMN file_type TEXT"))
+            conn.commit()
+            logger.info("Database schema patched: added file_type column to documents.")
+        except Exception:
+            pass
+        try:
+            conn.execute(text("ALTER TABLE documents ADD COLUMN file_size_bytes INTEGER"))
+            conn.commit()
+            logger.info("Database schema patched: added file_size_bytes column to documents.")
+        except Exception:
+            pass
+
+    # Phase 2: Episodic memory table — persistent task history
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS episodic_memory (
+                    id              TEXT PRIMARY KEY,
+                    task            TEXT NOT NULL,
+                    tools_used      TEXT NOT NULL DEFAULT '[]',
+                    success         INTEGER NOT NULL DEFAULT 0,
+                    summary         TEXT NOT NULL DEFAULT '',
+                    project_id      TEXT NOT NULL DEFAULT 'default',
+                    importance      INTEGER NOT NULL DEFAULT 1,
+                    session_id      TEXT NOT NULL DEFAULT '',
+                    access_count    INTEGER NOT NULL DEFAULT 0,
+                    last_accessed   TEXT,
+                    created_at      TEXT NOT NULL
+                )
+            """))
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_episodic_project
+                    ON episodic_memory(project_id)
+            """))
+            conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_episodic_created
+                    ON episodic_memory(created_at DESC)
+            """))
+            conn.commit()
+            logger.info("Episodic memory table initialized.")
+        except Exception as e:
+            logger.error(f"Error creating episodic_memory table: {e}")
+
+    # Phase 2: Schema migrations tracking table
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS schema_migrations (
+                    version     TEXT PRIMARY KEY,
+                    applied_at  TEXT NOT NULL
+                )
+            """))
+            conn.commit()
+            logger.info("Schema migrations table initialized.")
+        except Exception as e:
+            logger.error(f"Error creating schema_migrations table: {e}")
 
     # 4. Ensure a 'default' project exists for the Main Chat
     from app.models.project import ProjectModel

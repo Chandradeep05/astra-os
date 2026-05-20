@@ -364,6 +364,112 @@ Category:"""
 
 
 # ──────────────────────────────────────────────
+#  Multi-intent splitting
+# ──────────────────────────────────────────────
+
+# Conjunction patterns that indicate potential multi-intent queries.
+# Only explicit conjunctions — never commas, semicolons, or periods.
+_SPLIT_CONJUNCTIONS = re.compile(
+    r'\s+(?:and\s+(?:also\s+)?|also\s+|plus\s+|then\s+|after\s+that\s+)',
+    re.IGNORECASE,
+)
+
+# Blocklist: patterns where "and" joins parts of a single coherent intent.
+# If ANY match, the query is never split regardless of other signals.
+_NEVER_SPLIT_PATTERNS = re.compile(
+    r'\b('
+    # Comparison — always single intent
+    r'compare|comparison|versus|vs\.?'
+    r'|difference\s+between|similarities\s+between'
+    r'|pros\s+and\s+cons|advantages\s+and\s+disadvantages'
+    # Boolean connectors — always single intent
+    r'|both\s+.+\s+and'
+    r'|either\s+.+\s+or'
+    r'|neither\s+.+\s+nor'
+    # Range expressions
+    r'|between\s+.+\s+and'
+    # Togetherness markers
+    r'|.+\s+and\s+.+\s+(?:together|combined|respectively)'
+    r')\b',
+    re.IGNORECASE,
+)
+
+# Second half of a split must start with a recognizable action/intent verb.
+# This is the primary guard against noun-phrase continuations like
+# "search for cats and dogs" or "search for ML and neural networks".
+_INTENT_STARTER = re.compile(
+    r'^\s*(?:'
+    r'search|summarize|remember|what|how|who|where|when|why'
+    r'|find|look|calculate|compute|write|compose|draft|tell'
+    r'|explain|describe|check|get|show|list|delete|remove'
+    r'|forget|recall|analyze|create|build|send|open|run'
+    r')\b',
+    re.IGNORECASE,
+)
+
+_MIN_SEGMENT_LEN = 8
+
+
+def split_intents(query: str) -> list:
+    """
+    Conservative multi-intent splitter.  Returns 1–2 sub-queries.
+
+    Returns ``[query]`` (no split) unless ALL conditions are met:
+
+    1. Query is long enough to plausibly contain two intents (≥ 25 chars).
+    2. No blocklist pattern matched (comparisons, boolean connectors, etc.).
+    3. A conjunction splits the query into exactly 2 parts (``maxsplit=1``).
+    4. The second half starts with a recognizable intent/action verb.
+    5. Both halves are ≥ 8 characters long.
+    6. Both halves classify to a known ``QueryClass`` (not ``None``).
+
+    Same-class splits ARE allowed (e.g. two TOOL_CALL intents).
+
+    Design philosophy: false-positive splits are catastrophic (two broken
+    answers), false negatives are harmless (falls through to AgentLoop
+    which already handles multi-step tasks).
+    """
+    q = query.strip()
+
+    # Quick exit: too short to be multi-intent
+    if len(q) < 25:
+        return [query]
+
+    # Blocklist — never split comparison / boolean / togetherness patterns
+    if _NEVER_SPLIT_PATTERNS.search(q):
+        return [query]
+
+    # Split on the first conjunction only (maxsplit=1 → max 2 parts)
+    parts = _SPLIT_CONJUNCTIONS.split(q, maxsplit=1)
+    if len(parts) < 2:
+        return [query]
+
+    left = parts[0].strip()
+    right = parts[1].strip()
+
+    # Minimum length guard
+    if len(left) < _MIN_SEGMENT_LEN or len(right) < _MIN_SEGMENT_LEN:
+        return [query]
+
+    # Second half must start with an intent/action verb
+    if not _INTENT_STARTER.match(right):
+        return [query]
+
+    # Both halves must classify to a known QueryClass
+    left_class = _classify_rule_based(left)
+    right_class = _classify_rule_based(right)
+    if left_class is None or right_class is None:
+        return [query]
+
+    logger.info(
+        f"[SPLIT] Accepted: [{left_class.value}] \"{left[:40]}\" + "
+        f"[{right_class.value}] \"{right[:40]}\""
+    )
+
+    return [left, right]
+
+
+# ──────────────────────────────────────────────
 #  Public API
 # ──────────────────────────────────────────────
 

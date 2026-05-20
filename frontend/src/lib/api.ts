@@ -10,6 +10,25 @@ export interface Project {
   history?: any[];
 }
 
+export interface EpisodicMemoryItem {
+  id: string;
+  task: string;
+  tools_used: string[];
+  success: boolean;
+  summary: string;
+  project_id: string;
+  importance: number;
+  session_id: string;
+  access_count: number;
+  last_accessed?: string;
+  created_at: string;
+}
+
+export interface EpisodicMemoryResponse {
+  episodes: EpisodicMemoryItem[];
+  total: number;
+}
+
 export interface ProjectUpdate {
   name?: string;
   description?: string;
@@ -39,6 +58,7 @@ export interface Workflow {
   status: string;
   last_run?: string;
   created_at: string;
+  steps?: string[];
 }
 
 export interface ChatMessage {
@@ -219,5 +239,24 @@ export const api = {
     } finally {
       reader.releaseLock();
     }
+  },
+
+  getMemoryEpisodes: async (
+    projectId: string = "default",
+    limit: number = 50,
+    offset: number = 0
+  ): Promise<EpisodicMemoryResponse> => {
+    const response = await fetch(
+      `${API_BASE_URL}/memory?project_id=${projectId}&limit=${limit}&offset=${offset}`
+    );
+    if (!response.ok) throw new Error("Failed to fetch memory episodes");
+    return response.json();
+  },
+
+  deleteMemoryEpisode: async (episodeId: string): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/memory/${episodeId}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) throw new Error("Failed to delete memory episode");
   },
 };

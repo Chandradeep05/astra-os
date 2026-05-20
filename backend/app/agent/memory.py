@@ -26,18 +26,20 @@ logger = logging.getLogger(__name__)
 # ──────────────────────────────────────────────
 #  Episodic Memory Store (SQLite-backed)
 # ──────────────────────────────────────────────
-# We use a simple in-memory list + periodic SQLite flush to avoid
-# adding another DB dependency. On restart, episodes are reloaded.
+# Phase 2: Full SQLite persistence. All history retained indefinitely.
+# Retrieval: fetch recent → rank by keyword overlap → return top N.
+# Access frequency tracked for future LRU-aware retrieval.
 
 class EpisodicMemory:
     """
-    Stores task execution episodes: what was attempted, which tools were used,
-    and whether the task succeeded. Helps the agent avoid repeating mistakes.
-    """
+    Stores task execution episodes in SQLite: what was attempted, which tools
+    were used, and whether the task succeeded. Helps the agent avoid repeating
+    mistakes and learn from past successes.
 
-    def __init__(self, max_episodes: int = 100):
-        self.episodes: List[Dict[str, Any]] = []
-        self.max_episodes = max_episodes
+    Phase 2: Migrated from in-memory list to persistent SQLite storage.
+    All history is retained indefinitely — retrieval is constrained by
+    recency and relevance, not storage limits.
+    """
 
     def record_episode(
         self,
@@ -47,47 +49,181 @@ class EpisodicMemory:
         summary: str,
         project_id: str = "default",
     ):
-        """Record a completed task episode."""
-        episode = {
-            "id": uuid.uuid4().hex[:12],
-            "task": task[:200],  # Truncate to save memory
-            "tools_used": tools_used,
-            "success": success,
-            "summary": summary[:500],
-            "project_id": project_id,
-            "timestamp": datetime.utcnow().isoformat(),
-        }
-        self.episodes.append(episode)
+        """Record a completed task episode to SQLite."""
+        from app.db import engine
+        from sqlmodel import Session
+        from sqlalchemy import text
 
-        # Evict oldest episodes if over limit
-        if len(self.episodes) > self.max_episodes:
-            self.episodes = self.episodes[-self.max_episodes:]
-
-        logger.info(f"Recorded episode: {'✅' if success else '❌'} {task[:50]}...")
+        episode_id = uuid.uuid4().hex[:12]
+        try:
+            with Session(engine) as session:
+                session.execute(
+                    text("""
+                        INSERT INTO episodic_memory
+                            (id, task, tools_used, success, summary, project_id, created_at)
+                        VALUES
+                            (:id, :task, :tools_used, :success, :summary, :project_id, :created_at)
+                    """),
+                    {
+                        "id": episode_id,
+                        "task": task[:200],
+                        "tools_used": json.dumps(tools_used),
+                        "success": 1 if success else 0,
+                        "summary": summary[:500],
+                        "project_id": project_id,
+                        "created_at": datetime.utcnow().isoformat(),
+                    }
+                )
+                session.commit()
+            logger.info(f"Recorded episode: {'✅' if success else '❌'} {task[:50]}...")
+        except Exception as e:
+            logger.error(f"Failed to record episode: {e}")
 
     def get_relevant_episodes(
-        self, task: str, limit: int = 3
+        self, task: str, limit: int = 3, project_id: str = "default",
     ) -> List[Dict[str, Any]]:
         """
-        Simple keyword-based retrieval of past episodes.
-        For a solo dev on low RAM, this beats loading another embedding model.
+        Retrieve relevant past episodes using recency + keyword matching.
+
+        Strategy (per approved spec):
+        1. Fetch last 100 episodes from SQLite (ordered by recency)
+        2. Score by keyword overlap in Python
+        3. Return top `limit` results
+        4. Update access_count on returned episodes
         """
-        if not self.episodes:
+        from app.db import engine
+        from sqlmodel import Session
+        from sqlalchemy import text
+
+        try:
+            with Session(engine) as session:
+                rows = session.execute(
+                    text("""
+                        SELECT id, task, tools_used, success, summary, project_id, created_at
+                        FROM episodic_memory
+                        WHERE project_id = :pid
+                        ORDER BY created_at DESC
+                        LIMIT 100
+                    """),
+                    {"pid": project_id}
+                ).fetchall()
+
+            if not rows:
+                return []
+
+            # Convert rows to dicts
+            episodes = []
+            for row in rows:
+                ep = dict(row._mapping)
+                ep["tools_used"] = json.loads(ep["tools_used"]) if isinstance(ep["tools_used"], str) else ep["tools_used"]
+                ep["success"] = bool(ep["success"])
+                episodes.append(ep)
+
+            # Score by keyword overlap (same proven logic from Phase 1)
+            task_words = set(task.lower().split())
+            scored = []
+            for ep in episodes:
+                ep_words = set(ep["task"].lower().split())
+                overlap = len(task_words & ep_words)
+                if overlap > 0:
+                    scored.append((overlap, ep))
+
+            # Sort by relevance (most keyword overlap first)
+            scored.sort(key=lambda x: x[0], reverse=True)
+
+            # Extract top results and update their access counts
+            result_episodes = [ep for _, ep in scored[:limit]]
+            if result_episodes:
+                self._update_access_count(result_episodes)
+
+            return result_episodes
+
+        except Exception as e:
+            logger.error(f"Failed to retrieve episodes: {e}")
             return []
 
-        task_words = set(task.lower().split())
+    def _update_access_count(self, episodes: List[Dict[str, Any]]):
+        """Increment access_count and update last_accessed for retrieved episodes."""
+        from app.db import engine
+        from sqlmodel import Session
+        from sqlalchemy import text
 
-        # Score each episode by keyword overlap with the current task
-        scored = []
-        for ep in self.episodes:
-            ep_words = set(ep["task"].lower().split())
-            overlap = len(task_words & ep_words)
-            if overlap > 0:
-                scored.append((overlap, ep))
+        try:
+            with Session(engine) as session:
+                for ep in episodes:
+                    session.execute(
+                        text("""
+                            UPDATE episodic_memory
+                            SET access_count = access_count + 1,
+                                last_accessed = :now
+                            WHERE id = :id
+                        """),
+                        {"id": ep["id"], "now": datetime.utcnow().isoformat()}
+                    )
+                session.commit()
+        except Exception as e:
+            logger.error(f"Failed to update access counts: {e}")
 
-        # Sort by relevance (most keyword overlap first)
-        scored.sort(key=lambda x: x[0], reverse=True)
-        return [ep for _, ep in scored[:limit]]
+    def get_all_episodes(
+        self, project_id: str = "default", limit: int = 50, offset: int = 0
+    ) -> Dict[str, Any]:
+        """Paginated retrieval for the Memory Browser UI."""
+        from app.db import engine
+        from sqlmodel import Session
+        from sqlalchemy import text
+
+        try:
+            with Session(engine) as session:
+                # Get total count
+                count_row = session.execute(
+                    text("SELECT COUNT(*) as cnt FROM episodic_memory WHERE project_id = :pid"),
+                    {"pid": project_id}
+                ).first()
+                total = count_row.cnt if count_row else 0
+
+                # Get paginated rows
+                rows = session.execute(
+                    text("""
+                        SELECT * FROM episodic_memory
+                        WHERE project_id = :pid
+                        ORDER BY created_at DESC
+                        LIMIT :lim OFFSET :off
+                    """),
+                    {"pid": project_id, "lim": limit, "off": offset}
+                ).fetchall()
+
+                episodes = []
+                for row in rows:
+                    ep = dict(row._mapping)
+                    ep["tools_used"] = json.loads(ep["tools_used"]) if isinstance(ep["tools_used"], str) else ep["tools_used"]
+                    ep["success"] = bool(ep["success"])
+                    episodes.append(ep)
+
+                return {"episodes": episodes, "total": total}
+        except Exception as e:
+            logger.error(f"Failed to get all episodes: {e}")
+            return {"episodes": [], "total": 0}
+
+    def delete_episode(self, episode_id: str) -> bool:
+        """Delete a specific episode by ID."""
+        from app.db import engine
+        from sqlmodel import Session
+        from sqlalchemy import text
+
+        try:
+            with Session(engine) as session:
+                result = session.execute(
+                    text("DELETE FROM episodic_memory WHERE id = :id"),
+                    {"id": episode_id}
+                )
+                session.commit()
+                deleted = result.rowcount > 0
+                if deleted:
+                    logger.info(f"Deleted episode: {episode_id}")
+                return deleted
+        except Exception as e:
+            logger.error(f"Failed to delete episode: {e}")
+            return False
 
     def format_episodes(self, episodes: List[Dict[str, Any]]) -> str:
         """Format episodes into context for the LLM."""
@@ -222,7 +358,7 @@ class AgentMemory:
 
     def __init__(self):
         self.long_term = LongTermMemory()
-        self.episodic = EpisodicMemory(max_episodes=100)
+        self.episodic = EpisodicMemory()
 
     async def build_context(
         self,
@@ -279,7 +415,7 @@ class AgentMemory:
                 if line.startswith("- "):
                     mem_parts.append(f"* {line[2:]}")
 
-        episodes = self.episodic.get_relevant_episodes(task, limit=2)
+        episodes = self.episodic.get_relevant_episodes(task, limit=2, project_id=project_id)
         for ep in episodes:
             status = "Success" if ep["success"] else "Failure"
             mem_parts.append(f"* Past {status}: {ep['task'][:100]} -> {ep['summary'][:150]}")
