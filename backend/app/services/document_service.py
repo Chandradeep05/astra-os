@@ -1,9 +1,10 @@
 import os
 import uuid
+import time
 import json
 import aiohttp
 import difflib
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from pydantic import BaseModel
 import pypdf
 from docx import Document
@@ -69,6 +70,9 @@ _PRONOUN_REF_PATTERN = re.compile(
     r'\b(summarize it|explain it|explain that|what does it say|what does it mention|'
     r'read it|open it|the same document|the same file|that document|that file|'
     r'this document|this file|the document|the file|'
+    r'explain its content|its content|analyze it|analyze this|its data|summarize this|'
+    r'that pdf|this pdf|the pdf|the spreadsheet|that spreadsheet|this spreadsheet|'
+    r'the csv|that csv|this csv|summarize that|'
     r'the (first|second|third|last|next|previous) (document|file|pdf|upload))\b',
     re.IGNORECASE,
 )
@@ -87,6 +91,40 @@ class DocumentService:
         self._last_queried_source: Optional[str] = None  # Fix #2: track last successfully queried source for pronoun resolution
         self._last_uploaded_source: Optional[str] = None
         self._last_uploaded_at: Optional[float] = None  # timestamp
+        self._source_stack: List[Tuple[str, float]] = []
+
+    def _push_source_stack(self, source: str):
+        """Push a source filename onto the MRU stack with the current timestamp.
+        If it already exists in the stack, update its timestamp and move it to the end (MRU).
+        """
+        if not source:
+            return
+        source = source.lower()
+        import time
+        # Remove any existing entry for this source to maintain uniqueness and MRU order
+        self._source_stack = [item for item in self._source_stack if item[0] != source]
+        self._source_stack.append((source, time.time()))
+        logger.info(f"[ASTRA-STACK] Pushed source to MRU stack: {source} (current size: {len(self._source_stack)})")
+
+    def _resolve_from_stack(self) -> Optional[str]:
+        """Resolve a pronoun reference to the most recent active source from the MRU stack,
+        applying a timestamp decay filter (e.g., within 300 seconds / 5 minutes).
+        """
+        import time
+        now = time.time()
+        decay_window = 300.0  # 5 minutes in seconds
+        
+        # Clean up stale entries first
+        self._source_stack = [item for item in self._source_stack if now - item[1] < decay_window]
+        
+        if self._source_stack:
+            # The last element is the most recently pushed (MRU)
+            resolved = self._source_stack[-1][0]
+            logger.info(f"[ASTRA-STACK-RESOLVE] Resolved pronoun to MRU source: {resolved}")
+            return resolved
+        
+        logger.info("[ASTRA-STACK-RESOLVE] MRU stack is empty or all entries decayed.")
+        return None
 
     async def _get_session(self) -> aiohttp.ClientSession:
         """Get or create a shared HTTP session for embedding calls."""
@@ -150,60 +188,199 @@ class DocumentService:
         raise RuntimeError(f"Failed to generate embeddings after {max_retries} retries. Ensure Ollama is running and model '{self.model}' is installed.") 
 
     def _chunk_text(self, text: str, max_size: int = 1000, overlap: int = 150) -> List[str]:
-        """Semantically chunks text by paragraphs and sentences with overlap."""
+        """Semantically chunks text by headings, paragraphs, lists, and code blocks.
+        Preserves code blocks and lists, splits on headings, and injects context prefixes.
+        """
         import re
-        chunks = []
-        paragraphs = re.split(r'\n\n+', text.strip())
-        current_chunk = ""
-
-        def add_to_chunk(segment: str):
-            nonlocal current_chunk
-            if not current_chunk:
-                current_chunk = segment
-            elif len(current_chunk) + len(segment) + 1 <= max_size:
-                current_chunk += " " + segment
-            else:
-                chunks.append(current_chunk.strip())
-                # Create overlap without cutting words in half
-                overlap_text = current_chunk[-overlap:]
-                last_space = overlap_text.rfind(' ')
-                if last_space != -1:
-                    overlap_text = overlap_text[last_space+1:]
-                new_chunk = (overlap_text.strip() + " " + segment).strip()
-                if len(new_chunk) > max_size:
-                    chunks.append(overlap_text.strip())
-                    current_chunk = segment
-                else:
-                    current_chunk = new_chunk
-
-        for para in paragraphs:
-            para = para.strip()
-            if not para:
-                continue
-            if len(para) <= max_size:
-                add_to_chunk(para)
-            else:
-                # Split paragraph into sentences safely
-                sentences = re.split(r'(?<=[.!?])\s+', para)
-                for sent in sentences:
-                    if len(sent) <= max_size:
-                        add_to_chunk(sent)
-                    else:
-                        # Fallback for massive sentences: split by words
-                        words = sent.split(' ')
-                        temp = ""
-                        for word in words:
-                            if len(temp) + len(word) + 1 <= max_size:
-                                temp += (" " + word) if temp else word
-                            else:
-                                add_to_chunk(temp)
-                                temp = word
-                        if temp:
-                            add_to_chunk(temp)
-                            
-        if current_chunk:
-            chunks.append(current_chunk.strip())
+        
+        # 1. Parse into logical blocks
+        blocks = []
+        lines = text.split('\n')
+        i = 0
+        n = len(lines)
+        current_list = []
+        
+        while i < n:
+            line = lines[i]
             
+            # Code Block detection
+            if line.strip().startswith('```'):
+                if current_list:
+                    blocks.append({'type': 'list', 'content': '\n'.join(current_list)})
+                    current_list = []
+                code_block_lines = [line]
+                i += 1
+                while i < n:
+                    code_block_lines.append(lines[i])
+                    if lines[i].strip().startswith('```'):
+                        i += 1
+                        break
+                    i += 1
+                blocks.append({'type': 'code_block', 'content': '\n'.join(code_block_lines)})
+                continue
+                
+            # Markdown Heading detection
+            heading_match = re.match(r'^(#{1,6})\s+(.+)$', line.strip())
+            if heading_match:
+                if current_list:
+                    blocks.append({'type': 'list', 'content': '\n'.join(current_list)})
+                    current_list = []
+                blocks.append({
+                    'type': 'heading', 
+                    'level': len(heading_match.group(1)), 
+                    'content': heading_match.group(2).strip()
+                })
+                i += 1
+                continue
+                
+            # List Item detection
+            list_match = re.match(r'^(\s*)([-\*\+]\s|\d+[\.\)]\s|[a-zA-Z][\.\)]\s)(.+)$', line)
+            if list_match:
+                current_list.append(line)
+                i += 1
+                continue
+                
+            # Empty line
+            if not line.strip():
+                if current_list:
+                    blocks.append({'type': 'list', 'content': '\n'.join(current_list)})
+                    current_list = []
+                i += 1
+                continue
+                
+            # Continuing a list (indented lines)
+            if current_list and (line.startswith('    ') or line.startswith('\t') or line.startswith('  ')):
+                current_list.append(line)
+                i += 1
+                continue
+                
+            # Regular paragraph line
+            if current_list:
+                blocks.append({'type': 'list', 'content': '\n'.join(current_list)})
+                current_list = []
+                
+            para_lines = [line]
+            i += 1
+            while i < n:
+                next_line = lines[i]
+                if (next_line.strip().startswith('```') or 
+                    re.match(r'^(#{1,6})\s+(.+)$', next_line.strip()) or 
+                    re.match(r'^(\s*)([-\*\+]\s|\d+[\.\)]\s|[a-zA-Z][\.\)]\s)(.+)$', next_line) or 
+                    not next_line.strip()):
+                    break
+                para_lines.append(next_line)
+                i += 1
+            blocks.append({'type': 'paragraph', 'content': '\n'.join(para_lines)})
+            
+        if current_list:
+            blocks.append({'type': 'list', 'content': '\n'.join(current_list)})
+
+        # 2. Assemble blocks into chunks
+        chunks = []
+        current_heading = None
+        current_segments = []
+        current_len = 0
+        
+        def get_prefix():
+            if current_heading:
+                return f"[Section: {current_heading}]\n"
+            return ""
+            
+        def flush_chunk():
+            nonlocal current_segments, current_len
+            if not current_segments:
+                return
+            prefix = get_prefix()
+            chunk_content = prefix + "\n".join(current_segments)
+            if len(chunk_content.strip()) > 50:
+                chunks.append(chunk_content.strip())
+            current_segments = []
+            current_len = 0
+
+        for block in blocks:
+            prefix = get_prefix()
+            prefix_len = len(prefix)
+            
+            if block['type'] == 'heading':
+                # Heading acts as a hard split
+                flush_chunk()
+                current_heading = block['content']
+                # Include the heading itself in the new chunk
+                heading_line = f"#{'#' * (block['level'] - 1)} {block['content']}"
+                current_segments.append(heading_line)
+                current_len = len(heading_line)
+                
+            elif block['type'] == 'code_block':
+                block_content = block['content']
+                # If code block is small and fits in the current chunk, append it
+                if prefix_len + current_len + len(block_content) + 1 <= max_size:
+                    current_segments.append(block_content)
+                    current_len += len(block_content) + 1
+                else:
+                    # Otherwise flush current and put in a new chunk
+                    flush_chunk()
+                    if prefix_len + len(block_content) <= max_size:
+                        current_segments.append(block_content)
+                        current_len = len(block_content)
+                    else:
+                        # Code block itself is huge, put in its own chunk regardless of size
+                        # to preserve code block integrity as much as possible
+                        chunks.append((get_prefix() + block_content).strip())
+                        
+            elif block['type'] == 'list':
+                list_items = block['content'].split('\n')
+                # Try to fit the whole list
+                entire_list_len = len(block['content'])
+                if prefix_len + current_len + entire_list_len + 1 <= max_size:
+                    current_segments.append(block['content'])
+                    current_len += entire_list_len + 1
+                else:
+                    # If it doesn't fit, add items one by one to preserve structure
+                    for item in list_items:
+                        if prefix_len + current_len + len(item) + 1 <= max_size:
+                            current_segments.append(item)
+                            current_len += len(item) + 1
+                        else:
+                            flush_chunk()
+                            current_segments.append(item)
+                            current_len = len(item)
+                            
+            elif block['type'] == 'paragraph':
+                para_content = block['content']
+                if prefix_len + current_len + len(para_content) + 1 <= max_size:
+                    current_segments.append(para_content)
+                    current_len += len(para_content) + 1
+                else:
+                    # Split paragraph into sentences safely
+                    sentences = re.split(r'(?<=[.!?])\s+', para_content)
+                    for sent in sentences:
+                        sent = sent.strip()
+                        if not sent:
+                            continue
+                        if prefix_len + current_len + len(sent) + 1 <= max_size:
+                            current_segments.append(sent)
+                            current_len += len(sent) + 1
+                        else:
+                            flush_chunk()
+                            if prefix_len + len(sent) <= max_size:
+                                current_segments.append(sent)
+                                current_len = len(sent)
+                            else:
+                                # Giant sentence fallback: split by words
+                                words = sent.split(' ')
+                                temp = ""
+                                for word in words:
+                                    if prefix_len + len(temp) + len(word) + 1 <= max_size:
+                                        temp += (" " + word) if temp else word
+                                    else:
+                                        if temp:
+                                            chunks.append((get_prefix() + temp).strip())
+                                        temp = word
+                                if temp:
+                                    current_segments.append(temp)
+                                    current_len = len(temp)
+                                    
+        flush_chunk()
         return [c for c in chunks if len(c) > 50]
 
     async def process_and_index_file(
@@ -239,14 +416,21 @@ class DocumentService:
             effective_file_id = file_id or os.path.splitext(file_name)[0]
             # Fix #3: Store normalized filename for fuzzy matching
             source_norm = _normalize_filename(file_name)
+            file_extension = os.path.splitext(file_name)[1].lower()
+            indexed_at_time = time.time()
+            total_chunks = len(chunks)
             metadatas = [
                 {
                     "source": file_name,
                     "source_normalized": source_norm,
                     "file_id": effective_file_id,
                     "project_id": project_id,
+                    "chunk_index": idx,
+                    "total_chunks": total_chunks,
+                    "file_type": file_extension,
+                    "indexed_at": indexed_at_time,
                 }
-                for _ in chunks
+                for idx, _ in enumerate(chunks)
             ]
                 
             success = vector_service.add_documents(
@@ -256,14 +440,16 @@ class DocumentService:
                 metadatas=metadatas,
                 embeddings=list(embeddings)
             )
-            import time
-            self._last_uploaded_source = file_name
-            self._last_uploaded_at = time.time()
-
-            return success
+            
+            if success:
+                self._last_uploaded_source = file_name
+                self._last_uploaded_at = time.time()
+                self._push_source_stack(file_name)
+                return total_chunks
+            return 0
         except Exception as e:
             logger.error(f"Error indexing file {file_path}: {e}")
-            return False
+            return 0
 
     async def search_similar(  # ASTRA-FIX
         self,
@@ -321,20 +507,12 @@ class DocumentService:
                         detected_source = target["original_name"]
                         logger.info(f"[ASTRA-ORDINAL] Resolved '{ordinal_word}' → {detected_source}")
 
-            # Fix #2: Pronoun resolution — "summarize it" → use last queried source
-            # ASTRA-UPGRADE: Prefer recently uploaded file (within 5 minutes) over last queried
+            # Fix #2: Pronoun resolution — "summarize it" → resolve from MRU stack
             if not detected_source and not file_id and _PRONOUN_REF_PATTERN.search(query):
-                import time
-                if (
-                    self._last_uploaded_source
-                    and self._last_uploaded_at
-                    and (time.time() - self._last_uploaded_at) < 300
-                ):
-                    detected_source = self._last_uploaded_source
-                    logger.info(f"[ASTRA-PRONOUN] Resolved to recently uploaded: {detected_source}")
-                elif self._last_queried_source:
-                    detected_source = self._last_queried_source
-                    logger.info(f"[ASTRA-PRONOUN] Resolved to last queried: {detected_source}")
+                resolved = self._resolve_from_stack()
+                if resolved:
+                    detected_source = resolved
+                    logger.info(f"[ASTRA-PRONOUN] Resolved pronoun/reference to MRU source: {detected_source}")
 
             # ── FUZZY FILENAME MATCHING (DO THIS WEEK) ───────────────────────────
             # Users often mistype filenames. If detected_source doesn't match any
@@ -565,6 +743,8 @@ class DocumentService:
                     if top_source:
                         self._last_queried_source = top_source
                         logger.info(f"[ASTRA-TRACK] Tracked source from result: {top_source}")
+                if self._last_queried_source:
+                    self._push_source_stack(self._last_queried_source)
                 logger.info(f"[ASTRA-RESULT] Returning {min(len(high_results), limit)} HIGH confidence chunks")
                 return {
                     "results": high_results[:limit],
@@ -579,6 +759,8 @@ class DocumentService:
                     top_source = low_results[0].get("metadata", {}).get("source")
                     if top_source:
                         self._last_queried_source = top_source
+                if self._last_queried_source:
+                    self._push_source_stack(self._last_queried_source)
                 
                 selected = low_results[:min(limit, 3)]
                 logger.info(f"[ASTRA-RESULT] Returning {len(selected)} LOW confidence chunks (fallback)")

@@ -107,12 +107,14 @@ async def run_cli():
                 continue
 
             if task.lower() == "memory":
-                episodes = agent_memory.episodic.episodes
+                result = agent_memory.episodic.get_all_episodes(project_id="default", limit=10)
+                episodes = result.get("episodes", [])
+                total = result.get("total", 0)
                 if not episodes:
                     print(f"\n{Colors.DIM}No episodic memories yet.{Colors.RESET}")
                 else:
-                    print(f"\n{Colors.BOLD}Episodic Memory ({len(episodes)} episodes):{Colors.RESET}")
-                    for ep in episodes[-5:]:  # Show last 5
+                    print(f"\n{Colors.BOLD}Episodic Memory ({total} total, showing last {len(episodes)}):{Colors.RESET}")
+                    for ep in episodes:
                         icon = "✅" if ep["success"] else "❌"
                         print(f"  {icon} {ep['task'][:60]} — {ep['summary'][:80]}")
                 continue

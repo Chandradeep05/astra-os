@@ -55,6 +55,7 @@ export const Sidebar = ({ activeProject, onSelectProject }: SidebarProps) => {
     { icon: LayoutGrid, label: "Dashboard", id: "dashboard" },
     { icon: Cpu, label: "Autonomous Agent", id: "agent" },
     { icon: MessageSquare, label: "Main Chat", id: "default" },
+    { icon: Database, label: "Memory Browser", id: "memory-browser" },
   ];
 
   return (

@@ -19,7 +19,7 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from app.agent.schemas import AgentRequest, AgentStreamEvent
 from app.agent.loop import AgentLoop
-from app.agent.classifier import classify_query, QueryClass
+from app.agent.classifier import classify_query, QueryClass, split_intents
 from app.services.audit_service import audit_service
 from app.services.ollama import OllamaService
 from app.services.document_service import document_service
@@ -533,7 +533,7 @@ async def _rag_bypass_stream(request: AgentRequest):
             system_prompt=_RAG_SYSTEM_PROMPT,
             history=[],
             rag_chunks=chunks,
-            max_window=8192
+            max_window=4096
         )
 
         # Build context from chunks — guard against empty content
@@ -705,6 +705,138 @@ async def _web_search_bypass_stream(request: AgentRequest):
         yield "data: [DONE]\n\n"
 
 
+async def _route_single_intent(
+    request: AgentRequest, query_class: QueryClass, max_iters: int = 3
+):
+    """
+    Route a single classified intent through the appropriate bypass or AgentLoop.
+    Strips stream-termination events (type=done, [DONE]) so the caller can
+    control when the overall SSE stream ends.
+
+    Used exclusively by the multi-intent path.  The single-intent path in
+    stream_generator() is completely unchanged.
+    """
+
+    async def _dispatch():
+        """Select and execute the handler for this query class."""
+
+        if query_class == QueryClass.DIRECT_LLM:
+            async for chunk in _direct_llm_stream(request):
+                yield chunk
+            return
+
+        if query_class == QueryClass.MEMORY_OP:
+            handled = False
+            async for chunk in _memory_bypass_stream(request):
+                handled = True
+                yield chunk
+            if handled:
+                return
+            # Ambiguous memory query — fall through to AgentLoop
+
+        if query_class == QueryClass.RAG_QUERY:
+            async for chunk in _rag_bypass_stream(request):
+                yield chunk
+            return
+
+        if query_class == QueryClass.META:
+            async for chunk in _direct_llm_stream(request):
+                yield chunk
+            return
+
+        if query_class == QueryClass.ACTION_REQUEST:
+            _SUB_WRITING_RE = _re.compile(
+                r'\b(write|compose|draft|create)\b.{0,20}'
+                r'\b(email|letter|essay|story|message|report|proposal|application)\b',
+                _re.IGNORECASE,
+            )
+            if _SUB_WRITING_RE.search(request.task):
+                _WRITING_SYS = (
+                    "You are ASTRA, a professional writing assistant. "
+                    "Write exactly what the user asks for in proper format "
+                    "with appropriate greeting, body, and sign-off. "
+                    "Output ONLY the written content."
+                )
+                model = request.model or settings.DEFAULT_MODEL
+                ollama = OllamaService(model_name=model)
+                async for chunk in ollama.stream_invoke(
+                    prompt=request.task,
+                    history=[{"role": "system", "content": _WRITING_SYS}],
+                ):
+                    if chunk.get("type") == "content":
+                        ev = AgentStreamEvent(type="answer", content=chunk["content"])
+                        yield f"data: {json.dumps(ev.model_dump(exclude_none=True))}\n\n"
+                yield f"data: {json.dumps(AgentStreamEvent(type='done').model_dump(exclude_none=True))}\n\n"
+                yield "data: [DONE]\n\n"
+                return
+            # Non-writing ACTION_REQUEST → unsupported as sub-intent
+            ev = AgentStreamEvent(
+                type="answer",
+                content="\u26a0\ufe0f This action type isn't available yet as a sub-task."
+            )
+            yield f"data: {json.dumps(ev.model_dump(exclude_none=True))}\n\n"
+            yield f"data: {json.dumps(AgentStreamEvent(type='done').model_dump(exclude_none=True))}\n\n"
+            yield "data: [DONE]\n\n"
+            return
+
+        if query_class == QueryClass.TOOL_CALL:
+            # Math bypass
+            expr_clean = _re.sub(
+                r'^(calculate[:\s]*|compute[:\s]*|what\s+is\s+|what\'?s\s+)',
+                '', request.task, flags=_re.IGNORECASE
+            ).strip().rstrip('?').strip()
+            if _re.match(r'^[\d\s\(\)\.\+\-\*\/\%\^]+$', expr_clean):
+                expr_clean = expr_clean.replace('^', '**')
+                async for chunk in _math_bypass_stream(request):
+                    yield chunk
+                return
+
+            _MATH_FUNC = _re.compile(
+                r'^[\d\s\(\)\.\+\-\*\/\%\^\,]*'
+                r'(sqrt|log|log10|log2|abs|pow|ceil|floor|round|sin|cos|tan|exp|pi)\b'
+                r'[\d\s\(\)\.\+\-\*\/\%\^\,\w]*$',
+                _re.IGNORECASE
+            )
+            if _MATH_FUNC.match(expr_clean):
+                async for chunk in _math_bypass_stream(request):
+                    yield chunk
+                return
+
+            # Web search bypass (simple queries only — no reasoning)
+            if (
+                _WEB_SEARCH_QUERY_PATTERN.search(request.task)
+                and not _WEB_SEARCH_ANTI_PATTERN.search(request.task)
+            ):
+                async for chunk in _web_search_bypass_stream(request):
+                    yield chunk
+                return
+
+        # Fallback: full AgentLoop with reduced iterations
+        agent = AgentLoop(model_name=request.model, approval_mode="streaming")
+        async for event in agent.run(
+            task=request.task,
+            project_id=request.project_id,
+            max_iterations=max_iters,
+            query_class=query_class.value,
+        ):
+            yield f"data: {json.dumps(event.model_dump(exclude_none=True))}\n\n"
+        yield "data: [DONE]\n\n"
+
+    # Filter out stream-termination events — the caller emits these once at the end
+    async for chunk in _dispatch():
+        stripped = chunk.strip()
+        if stripped == "data: [DONE]":
+            continue
+        if stripped.startswith("data: "):
+            try:
+                payload = json.loads(stripped[6:])
+                if isinstance(payload, dict) and payload.get("type") == "done":
+                    continue
+            except (json.JSONDecodeError, ValueError):
+                pass
+        yield chunk
+
+
 @router.post("/run")
 async def agent_endpoint(request: AgentRequest):
     """
@@ -717,6 +849,41 @@ async def agent_endpoint(request: AgentRequest):
         try:
             if not request.task or not request.task.strip():
                 yield f"data: {json.dumps({'type': 'error', 'content': 'Empty task.'})}\n\n"
+                return
+
+            # ── MULTI-INTENT SPLIT ─────────────────────────────────
+            sub_intents = split_intents(request.task)
+            if len(sub_intents) > 1:
+                import asyncio as _aio
+                logger.info(f"[MULTI-INTENT] Split into {len(sub_intents)} intents: {sub_intents}")
+                for i, sub_task in enumerate(sub_intents, 1):
+                    sep_event = AgentStreamEvent(
+                        type="thought",
+                        content=f"Processing part {i}/{len(sub_intents)}: {sub_task.strip()}"
+                    )
+                    yield f"data: {json.dumps(sep_event.model_dump(exclude_none=True))}\n\n"
+
+                    try:
+                        sub_class = await _aio.wait_for(classify_query(sub_task), timeout=5.0)
+                    except _aio.TimeoutError:
+                        sub_class = QueryClass.DIRECT_LLM
+
+                    logger.info(f"[MULTI-INTENT] Sub-intent {i}: [{sub_class.value}] {sub_task[:60]}")
+
+                    sub_request = AgentRequest(
+                        task=sub_task,
+                        project_id=request.project_id,
+                        model=request.model,
+                    )
+
+                    async for sse_chunk in _route_single_intent(
+                        sub_request, sub_class,
+                        max_iters=min(request.max_iterations, 3),
+                    ):
+                        yield sse_chunk
+
+                yield f"data: {json.dumps(AgentStreamEvent(type='done').model_dump(exclude_none=True))}\n\n"
+                yield "data: [DONE]\n\n"
                 return
 
             # ── FIX-1: Classify BEFORE anything else executes ──────────────
@@ -940,7 +1107,7 @@ async def agent_endpoint(request: AgentRequest):
     )
 
 
-@router.get("/agent/health")
+@router.get("/health")
 async def agent_health():
     """Quick check that the agent system is operational."""
     from app.core.tool_registry import tool_registry
