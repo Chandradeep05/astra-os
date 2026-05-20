@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Plus, LayoutGrid, MessageSquare, Settings, Database, Code, Globe, User, Loader2, X, Cpu } from "lucide-react";
+import { Plus, LayoutGrid, MessageSquare, Settings, Database, Code, Globe, User, Loader2, X, Cpu, FileText, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { api, Project } from "@/lib/api";
@@ -55,7 +55,9 @@ export const Sidebar = ({ activeProject, onSelectProject }: SidebarProps) => {
     { icon: LayoutGrid, label: "Dashboard", id: "dashboard" },
     { icon: Cpu, label: "Autonomous Agent", id: "agent" },
     { icon: MessageSquare, label: "Main Chat", id: "default" },
+    { icon: FileText, label: "Document Manager", id: "documents" },
     { icon: Database, label: "Memory Browser", id: "memory-browser" },
+    { icon: Activity, label: "Execution Engine", id: "tasks" },
   ];
 
   return (
@@ -151,8 +153,14 @@ export const Sidebar = ({ activeProject, onSelectProject }: SidebarProps) => {
 
         {/* Bottom Profile / Settings */}
         <div className="p-4 border-t border-white/5 space-y-1.5 bg-black/20">
-          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-zinc-500 hover:bg-white/5 hover:text-white transition-all group">
-            <Settings size={18} className="group-hover:rotate-45 transition-transform" />
+          <button 
+            onClick={() => onSelectProject("settings", "System Settings")}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all group",
+              activeProject === "settings" ? "bg-white/10 text-white" : "text-zinc-500 hover:bg-white/5 hover:text-white"
+            )}
+          >
+            <Settings size={18} className={cn("transition-transform duration-500", activeProject === "settings" ? "rotate-45 text-white" : "group-hover:rotate-45 text-zinc-500 group-hover:text-white")} />
             <span className="text-xs font-bold uppercase tracking-wider">System Settings</span>
           </button>
           <button className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/5 transition-all group cursor-pointer">

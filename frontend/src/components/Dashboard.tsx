@@ -26,6 +26,14 @@ interface DashboardProps {
 export const Dashboard = ({ onSelectProject }: DashboardProps) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [liveStats, setLiveStats] = useState({
+    documents_indexed: 0,
+    episodic_memories: 0,
+    ollama_status: "disconnected",
+    model_name: "none",
+    ram_usage_percent: 0,
+    cpu_percent: 0,
+  });
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -41,11 +49,50 @@ export const Dashboard = ({ onSelectProject }: DashboardProps) => {
     fetchProjects();
   }, []);
 
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const s = await api.getStats();
+        setLiveStats(s);
+      } catch (err) {
+        console.error("Failed to fetch dashboard stats:", err);
+      }
+    };
+    
+    fetchStats();
+    const interval = setInterval(fetchStats, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   const stats = [
-    { label: "Neural Engine", value: "Active", sub: "Llama 3.2", icon: Cpu, color: "text-emerald-500" },
-    { label: "Knowledge Assets", value: "12", sub: "Indexed Docs", icon: Database, color: "text-blue-500" },
-    { label: "Privacy Status", value: "Secure", sub: "Local Only", icon: ShieldCheck, color: "text-purple-500" },
-    { label: "System Load", value: "2.4%", sub: "Minimal", icon: Activity, color: "text-amber-500" },
+    { 
+      label: "Neural Engine", 
+      value: liveStats.ollama_status === "connected" ? "Active" : "Offline", 
+      sub: liveStats.model_name, 
+      icon: Cpu, 
+      color: liveStats.ollama_status === "connected" ? "text-emerald-500" : "text-red-500" 
+    },
+    { 
+      label: "Knowledge Assets", 
+      value: String(liveStats.documents_indexed), 
+      sub: `${liveStats.episodic_memories} Memories`, 
+      icon: Database, 
+      color: "text-blue-500" 
+    },
+    { 
+      label: "System CPU Load", 
+      value: `${liveStats.cpu_percent.toFixed(1)}%`, 
+      sub: "Processor Load", 
+      icon: Activity, 
+      color: "text-amber-500" 
+    },
+    { 
+      label: "Memory Usage", 
+      value: `${liveStats.ram_usage_percent.toFixed(1)}%`, 
+      sub: "RAM Allocated", 
+      icon: ShieldCheck, 
+      color: "text-purple-500" 
+    },
   ];
 
   return (

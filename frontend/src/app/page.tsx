@@ -6,16 +6,26 @@ import { ChatInterface } from "@/components/ChatInterface";
 import { AstraAgent } from "@/components/AstraAgent";
 import { Dashboard } from "@/components/Dashboard";
 import { MemoryBrowser } from "@/components/MemoryBrowser";
+import { DocumentManager } from "@/components/DocumentManager";
+import { SettingsPanel } from "@/components/SettingsPanel";
+import { BackgroundTasks } from "@/components/BackgroundTasks";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function Home() {
   const [activeProjectId, setActiveProjectId] = useState("dashboard");
   const [activeProjectName, setActiveProjectName] = useState("Dashboard");
+  const [currentProjectContext, setCurrentProjectContext] = useState("default");
 
   const handleSelectProject = (id: string, label?: string) => {
     setActiveProjectId(id);
     if (label) setActiveProjectName(label);
+    
+    // Preserve the actual active project context if switching to virtual views
+    const virtualViews = ["dashboard", "agent", "memory-browser", "documents", "tasks", "settings"];
+    if (!virtualViews.includes(id)) {
+      setCurrentProjectContext(id);
+    }
   };
 
   return (
@@ -64,6 +74,45 @@ export default function Home() {
             >
               <ErrorBoundary>
                 <MemoryBrowser />
+              </ErrorBoundary>
+            </motion.div>
+          ) : activeProjectId === "documents" ? (
+            <motion.div
+              key="documents"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.4, ease: "circOut" }}
+              className="h-full w-full"
+            >
+              <ErrorBoundary>
+                <DocumentManager projectId={currentProjectContext} />
+              </ErrorBoundary>
+            </motion.div>
+          ) : activeProjectId === "tasks" ? (
+            <motion.div
+              key="tasks"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.4, ease: "circOut" }}
+              className="h-full w-full"
+            >
+              <ErrorBoundary>
+                <BackgroundTasks projectId={currentProjectContext} />
+              </ErrorBoundary>
+            </motion.div>
+          ) : activeProjectId === "settings" ? (
+            <motion.div
+              key="settings"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.4, ease: "circOut" }}
+              className="h-full w-full"
+            >
+              <ErrorBoundary>
+                <SettingsPanel />
               </ErrorBoundary>
             </motion.div>
           ) : (

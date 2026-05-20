@@ -1,3 +1,16 @@
+export interface Document {
+  file_id: string;
+  filename: string;
+  original_name: string;
+  status: string;
+  rag_enabled: boolean;
+  project_id: string;
+  chunk_count: number;
+  uploaded_at: string;
+  file_type: string;
+  file_size_bytes: number;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -258,5 +271,54 @@ export const api = {
       method: "DELETE",
     });
     if (!response.ok) throw new Error("Failed to delete memory episode");
+  },
+
+  listDocuments: async (projectId: string): Promise<{ documents: Document[] }> => {
+    const response = await fetch(`${API_BASE_URL}/documents/list/${projectId}`);
+    if (!response.ok) throw new Error("Failed to fetch documents");
+    return response.json();
+  },
+
+  toggleDocument: async (fileId: string, enabled: boolean): Promise<any> => {
+    const response = await fetch(`${API_BASE_URL}/documents/toggle/${fileId}?enabled=${enabled}`, {
+      method: "PATCH",
+    });
+    if (!response.ok) throw new Error("Failed to toggle document RAG status");
+    return response.json();
+  },
+
+  deleteDocument: async (fileId: string): Promise<void> => {
+    const response = await fetch(`${API_BASE_URL}/documents/${fileId}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) throw new Error("Failed to delete document");
+  },
+
+  getStats: async (): Promise<any> => {
+    const response = await fetch(`${API_BASE_URL}/agent/stats`);
+    if (!response.ok) throw new Error("Failed to fetch system stats");
+    return response.json();
+  },
+
+  getSettings: async (): Promise<any> => {
+    const response = await fetch(`${API_BASE_URL}/agent/settings`);
+    if (!response.ok) throw new Error("Failed to fetch settings");
+    return response.json();
+  },
+
+  updateSettings: async (settings: any): Promise<any> => {
+    const response = await fetch(`${API_BASE_URL}/agent/settings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settings),
+    });
+    if (!response.ok) throw new Error("Failed to update settings");
+    return response.json();
+  },
+
+  getTasks: async (projectId: string): Promise<any> => {
+    const response = await fetch(`${API_BASE_URL}/agent/tasks?project_id=${projectId}`);
+    if (!response.ok) throw new Error("Failed to fetch background tasks");
+    return response.json();
   },
 };
