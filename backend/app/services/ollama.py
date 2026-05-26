@@ -21,6 +21,7 @@ def _get_client() -> httpx.AsyncClient:
 
 class OllamaService:
     """Direct Ollama HTTP streaming — no LangChain overhead."""
+    _model_loaded = False  # Class-level flag shared by all instances
 
     def __init__(self, model_name: str = settings.DEFAULT_MODEL):
         self.model_name = model_name
@@ -109,6 +110,7 @@ class OllamaService:
                     try:
                         data = json.loads(line)
                         if data.get("done"):
+                            OllamaService._model_loaded = True  # Confirmed loaded after successful stream
                             break
                         token = data.get("message", {}).get("content", "")
                         if token:
@@ -199,6 +201,7 @@ class OllamaService:
                 logger.warning(f"[OLLAMA] Model error in response: {result['error'][:200]}")
                 return None
 
+            OllamaService._model_loaded = True  # Confirmed loaded after successful tool call
             return result
             
         except httpx.ConnectError:
@@ -219,8 +222,66 @@ class OllamaService:
             if resp.status_code == 200:
                 tags = resp.json()
                 models = [m["name"] for m in tags.get("models", [])]
-                # Check if our model (or a prefix thereof) is available
-                return any(self.model_name in m for m in models)
+                available = any(self.model_name in m for m in models)
+                if available:
+                    # Sync _model_loaded flag on startup
+                    loaded = await self.is_model_loaded()
+                    OllamaService._model_loaded = loaded
+                return available
+            return False
+        except Exception:
+            return False
+
+    # ── Phase 3B: Sleep Mode Methods ──────────────────────────────
+
+    async def unload_model(self) -> bool:
+        """Force immediate model unload from memory (keep_alive: 0)."""
+        client = _get_client()
+        try:
+            resp = await client.post("/api/generate", json={
+                "model": self.model_name,
+                "keep_alive": 0,
+            })
+            if resp.status_code == 200:
+                OllamaService._model_loaded = False
+                logger.info(f"Model '{self.model_name}' unloaded from memory.")
+                return True
+            logger.warning(f"Unload returned HTTP {resp.status_code}")
+            return False
+        except Exception as e:
+            logger.error(f"Failed to unload model: {e}")
+            return False
+
+    async def warmup_model(self) -> bool:
+        """Pre-load model into memory (keep_alive: 30m)."""
+        client = _get_client()
+        try:
+            resp = await client.post("/api/generate", json={
+                "model": self.model_name,
+                "prompt": "",
+                "keep_alive": "30m",
+            })
+            if resp.status_code == 200:
+                OllamaService._model_loaded = True
+                logger.info(f"Model '{self.model_name}' loaded into memory.")
+                return True
+            logger.warning(f"Warmup returned HTTP {resp.status_code}")
+            return False
+        except Exception as e:
+            logger.error(f"Failed to warmup model: {e}")
+            return False
+
+    async def is_model_loaded(self) -> bool:
+        """Check if model is currently loaded via Ollama /api/ps. Call sparingly."""
+        client = _get_client()
+        try:
+            resp = await client.get("/api/ps")
+            if resp.status_code == 200:
+                data = resp.json()
+                models = [m.get("name", "") for m in data.get("models", [])]
+                loaded = any(self.model_name in m for m in models)
+                OllamaService._model_loaded = loaded  # Sync flag
+                return loaded
             return False
         except Exception:
             return False

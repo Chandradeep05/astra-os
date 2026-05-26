@@ -7,9 +7,56 @@ from app.db import get_session
 from app.agent.loop import AgentLoop
 from app.agent.schemas import AgentStreamEvent
 from app.services.audit_service import audit_service
+from app.services.scheduler_service import scheduler_service
 import uuid
 from datetime import datetime
 import json
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def _sync_workflow_cron(workflow: WorkflowModel, action: str = "upsert"):
+    """
+    Bridge between Workflow system and APScheduler.
+    When a workflow has trigger_type='scheduled', its trigger_config
+    should contain a JSON object with a 'cron' field (5-field cron expression).
+    This function registers/updates/removes the corresponding APScheduler job.
+    """
+    if action == "delete":
+        # Always try to remove on delete, regardless of trigger_type
+        try:
+            scheduler_service.remove_cron_bridge_job(workflow.id)
+        except Exception:
+            pass
+        return
+
+    if workflow.trigger_type != "scheduled":
+        return
+
+    # Parse trigger_config for cron expression
+    try:
+        config = json.loads(workflow.trigger_config or "{}")
+        cron_expr = config.get("cron")
+        if not cron_expr:
+            logger.warning(f"[WorkflowCronBridge] Workflow {workflow.id} has trigger_type=scheduled but no cron in trigger_config")
+            return
+    except (json.JSONDecodeError, TypeError):
+        logger.warning(f"[WorkflowCronBridge] Invalid trigger_config for workflow {workflow.id}")
+        return
+
+    # Register with scheduler service
+    try:
+        scheduler_service.register_cron_bridge_job(
+            workflow_id=workflow.id,
+            workflow_name=workflow.name,
+            cron_expression=cron_expr,
+            project_id=workflow.project_id,
+            steps=json.loads(workflow.steps_json or "[]"),
+        )
+        logger.info(f"[WorkflowCronBridge] Registered cron job for workflow '{workflow.name}' with cron: {cron_expr}")
+    except Exception as e:
+        logger.error(f"[WorkflowCronBridge] Failed to register cron job for workflow {workflow.id}: {e}")
 
 router = APIRouter()
 
@@ -48,6 +95,8 @@ async def create_workflow(workflow_in: WorkflowCreate, session: Session = Depend
     session.add(workflow)
     session.commit()
     session.refresh(workflow)
+    # Bridge: register APScheduler job if trigger_type=scheduled
+    _sync_workflow_cron(workflow, action="upsert")
     return workflow
 
 @router.get("/{workflow_id}", response_model=Workflow)
@@ -74,6 +123,8 @@ async def update_workflow(workflow_id: str, workflow_in: WorkflowUpdate, session
     session.add(workflow)
     session.commit()
     session.refresh(workflow)
+    # Bridge: update APScheduler job if trigger changed
+    _sync_workflow_cron(workflow, action="upsert")
     workflow.steps = json.loads(workflow.steps_json or "[]")
     return workflow
 
@@ -82,6 +133,8 @@ async def delete_workflow(workflow_id: str, session: Session = Depends(get_sessi
     workflow = session.get(WorkflowModel, workflow_id)
     if not workflow:
         raise HTTPException(status_code=404, detail="Workflow not found")
+    # Bridge: remove APScheduler job before deleting
+    _sync_workflow_cron(workflow, action="delete")
     session.delete(workflow)
     session.commit()
     return {"status": "success"}

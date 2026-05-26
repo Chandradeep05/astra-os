@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { api, Document } from "@/lib/api";
+import { api, authFetch, getAuthToken, API_BASE_URL, Document } from "@/lib/api";
 
 interface DocumentManagerProps {
   projectId: string;
@@ -68,11 +68,13 @@ export const DocumentManager = ({ projectId }: DocumentManagerProps) => {
 
   const activeSSEs = useRef<Map<string, EventSource>>(new Map());
 
-  const startIngestionStream = (fileId: string, filename: string) => {
+  const startIngestionStream = async (fileId: string, filename: string) => {
     if (activeSSEs.current.has(fileId)) return;
 
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
-    const es = new EventSource(`${API_BASE_URL}/documents/ingestion-stream/${fileId}`);
+    // EventSource doesn't support custom headers, so pass token as a query parameter
+    const token = await getAuthToken();
+    const tokenParam = token ? `?token=${encodeURIComponent(token)}` : "";
+    const es = new EventSource(`${API_BASE_URL}/documents/ingestion-stream/${fileId}${tokenParam}`);
     activeSSEs.current.set(fileId, es);
 
     // Add to state
@@ -146,8 +148,6 @@ export const DocumentManager = ({ projectId }: DocumentManagerProps) => {
   const handleFileUpload = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
 
-    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
-
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const formData = new FormData();
@@ -155,7 +155,7 @@ export const DocumentManager = ({ projectId }: DocumentManagerProps) => {
       formData.append("project_id", projectId);
 
       try {
-        const response = await fetch(`${API_BASE_URL}/documents/upload`, {
+        const response = await authFetch(`${API_BASE_URL}/documents/upload`, {
           method: "POST",
           body: formData,
         });

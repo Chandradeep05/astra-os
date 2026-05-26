@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Plus, LayoutGrid, MessageSquare, Settings, Database, Code, Globe, User, Loader2, X, Cpu, FileText, Activity } from "lucide-react";
+import { Plus, LayoutGrid, MessageSquare, Settings, Database, Code, Globe, User, Loader2, X, Cpu, FileText, Activity, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { api, Project } from "@/lib/api";
+import { useAstraRuntime } from "@/hooks/useAstraRuntime";
 
 interface SidebarProps {
   activeProject: string;
@@ -17,6 +18,7 @@ export const Sidebar = ({ activeProject, onSelectProject }: SidebarProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const { taskRunsUnreadCount, markTasksViewed } = useAstraRuntime();
 
   const fetchProjects = async () => {
     try {
@@ -58,6 +60,7 @@ export const Sidebar = ({ activeProject, onSelectProject }: SidebarProps) => {
     { icon: FileText, label: "Document Manager", id: "documents" },
     { icon: Database, label: "Memory Browser", id: "memory-browser" },
     { icon: Activity, label: "Execution Engine", id: "tasks" },
+    { icon: Calendar, label: "Scheduled Agents", id: "scheduled-tasks" },
   ];
 
   return (
@@ -90,7 +93,11 @@ export const Sidebar = ({ activeProject, onSelectProject }: SidebarProps) => {
           {navItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => onSelectProject(item.id, item.label)}
+              onClick={() => {
+                onSelectProject(item.id, item.label);
+                // Clear unread badge when Execution Engine is opened
+                if (item.id === "tasks") markTasksViewed();
+              }}
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 group relative",
                 activeProject === item.id 
@@ -110,6 +117,15 @@ export const Sidebar = ({ activeProject, onSelectProject }: SidebarProps) => {
                 activeProject === item.id ? "text-white" : "text-zinc-500 group-hover:text-zinc-300"
               )} />
               <span className="text-sm font-semibold tracking-tight">{item.label}</span>
+              {/* Unread badge for Execution Engine */}
+              {item.id === "tasks" && taskRunsUnreadCount > 0 && (
+                <span className="ml-auto flex items-center gap-1.5">
+                  <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-[10px] font-bold text-emerald-400 flex items-center justify-center">
+                    {taskRunsUnreadCount > 99 ? "99+" : taskRunsUnreadCount}
+                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
+                </span>
+              )}
             </button>
           ))}
 

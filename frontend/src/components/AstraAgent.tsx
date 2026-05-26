@@ -1,15 +1,12 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Send, Cpu, Terminal, ShieldAlert, Paperclip, Loader2 } from "lucide-react";
+import { Send, Cpu, Terminal, ShieldAlert, Paperclip, Loader2, StopCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { authFetch, API_BASE_URL } from "@/lib/api";
 
-// Derive API base from environment — same source of truth as api.ts
-const API_HOST = process.env.NEXT_PUBLIC_API_URL
-  ? process.env.NEXT_PUBLIC_API_URL.replace("/api/v1", "")
-  : "http://127.0.0.1:8000";
-
-type AnimationState = "idle" | "thinking" | "typing" | "speaking";
+type AnimationState = "idle" | "thinking" | "typing" | "speaking" | "waking";
 
 interface AgentStreamEvent {
   type: "thought" | "tool_call" | "tool_result" | "answer" | "phase_change" | "approval_required" | "done" | "error";
@@ -24,14 +21,21 @@ export const AstraAgent = () => {
   ]);
   const [input, setInput] = useState("");
   const [avatarState, setAvatarState] = useState<AnimationState>("idle");
+  const [isStreaming, setIsStreaming] = useState(false);
   const [showApproval, setShowApproval] = useState<any>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [thinkingText, setThinkingText] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll chat to bottom when messages change — use scrollTop
+  // instead of scrollIntoView to avoid scrolling ancestor containers
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = chatScrollRef.current;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
   }, [messages]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -45,7 +49,7 @@ export const AstraAgent = () => {
 
     try {
       setMessages((prev) => [...prev, { role: "system", content: `Uploading document: ${file.name}...` }]);
-      const response = await fetch(`${API_HOST}/api/v1/documents/upload`, {
+      const response = await authFetch(`${API_BASE_URL}/documents/upload`, {
         method: "POST",
         body: formData,
       });
@@ -78,7 +82,7 @@ export const AstraAgent = () => {
     if (!showApproval?.task_id) return;
     
     try {
-      const res = await fetch(`${API_HOST}/api/v1/agent/approve/${showApproval.task_id}?approved=${approved}`, {
+      const res = await authFetch(`${API_BASE_URL}/agent/approve/${showApproval.task_id}?approved=${approved}`, {
         method: "POST"
       });
       if (!res.ok) throw new Error("Approval failed");
@@ -92,19 +96,40 @@ export const AstraAgent = () => {
     }
   };
 
+  const handleStopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsStreaming(false);
+    setAvatarState("idle");
+    setThinkingText(null);
+    setMessages((prev) => [
+      ...prev,
+      { role: "system", content: "⏹️ Generation stopped by user." }
+    ]);
+  };
+
   const runAgentTask = async (task: string) => {
-    if (!task.trim()) return;
+    if (!task.trim() || isStreaming) return;
 
     setMessages((prev) => [...prev, { role: "user", content: task }]);
     setInput("");
     setAvatarState("thinking");
+    setIsStreaming(true);
     setShowApproval(null);
+    setThinkingText(null);
+
+    // Create new AbortController for this stream
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     try {
-      const response = await fetch(`${API_HOST}/api/v1/agent/run`, {
+      const response = await authFetch(`${API_BASE_URL}/agent/run`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ task }),
+        signal: controller.signal,
       });
 
       if (!response.body) throw new Error("No readable stream available");
@@ -127,6 +152,9 @@ export const AstraAgent = () => {
 
           if (dataStr === "[DONE]") {
             setAvatarState("idle");
+            setIsStreaming(false);
+            setThinkingText(null);
+            abortControllerRef.current = null;
             return;
           }
 
@@ -138,10 +166,18 @@ export const AstraAgent = () => {
           }
         }
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.name === "AbortError") {
+        // User cancelled — already handled in handleStopGeneration
+        return;
+      }
       console.error("Stream failure:", error);
-      setAvatarState("idle");
       setMessages((prev) => [...prev, { role: "system", content: `Error: ${String(error)}` }]);
+    } finally {
+      setAvatarState("idle");
+      setIsStreaming(false);
+      setThinkingText(null);
+      abortControllerRef.current = null;
     }
   };
 
@@ -149,12 +185,25 @@ export const AstraAgent = () => {
     switch (event.type) {
       case "thought":
         setAvatarState("thinking");
+        // Display waking/thinking thoughts in the telemetry panel
+        if (event.content) {
+          setThinkingText(event.content);
+          // Check for waking-related thoughts
+          const contentLower = event.content.toLowerCase();
+          if (contentLower.includes("wak") || contentLower.includes("loading model") || contentLower.includes("initializ")) {
+            setAvatarState("waking");
+          }
+        }
         break;
       case "tool_call":
         setAvatarState("typing");
+        if (event.data?.tool) {
+          setThinkingText(`Executing tool: ${event.data.tool}`);
+        }
         break;
       case "answer":
         setAvatarState("speaking");
+        setThinkingText(null);
         if (event.content) {
           setMessages((prev) => {
             const newMsgs = [...prev];
@@ -185,6 +234,7 @@ export const AstraAgent = () => {
       case "done":
       case "error":
         setAvatarState("idle");
+        setThinkingText(null);
         if (event.type === "error" && event.content) {
           setMessages((prev) => [...prev, { role: "system", content: `Error: ${event.content}` }]);
         }
@@ -192,18 +242,28 @@ export const AstraAgent = () => {
     }
   };
 
+  // Cleanup AbortController on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
   // Maps state to a mock 3D visual fallback HUD for demonstration
   const statusColor = {
     idle: "bg-emerald-500",
     thinking: "bg-purple-500",
     typing: "bg-blue-500",
     speaking: "bg-amber-500",
+    waking: "bg-orange-500",
   }[avatarState];
 
   return (
     <div className="flex flex-col h-full w-full bg-[#08080a] relative overflow-hidden">
       {/* Header */}
-      <header className="h-20 border-b border-white/10 flex items-center justify-between px-8 backdrop-blur-2xl bg-black/40 sticky top-0 z-30">
+      <header className="h-20 shrink-0 border-b border-white/10 flex items-center justify-between px-8 backdrop-blur-2xl bg-black/40 z-30">
         <div className="flex items-center gap-5">
           <div className="relative">
             <div className={cn("w-3 h-3 rounded-full transition-all duration-700 relative z-10 animate-pulse", statusColor)} />
@@ -219,24 +279,31 @@ export const AstraAgent = () => {
       </header>
 
       {/* Main Layout Area */}
-      <div className="flex flex-1 overflow-hidden p-6 gap-6">
+      <div className="flex flex-1 min-h-0 overflow-hidden p-6 gap-6">
         
         {/* Left: Chat Log */}
-        <div className="flex-1 flex flex-col bg-white/[0.02] border border-white/5 rounded-[2rem] overflow-hidden shadow-2xl relative">
+        <div className="flex-1 min-h-0 flex flex-col bg-white/[0.02] border border-white/5 rounded-[2rem] overflow-hidden shadow-2xl relative">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500" />
           
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {messages.map((m, i) => (
-              <div key={i} className={cn(
-                "p-4 rounded-2xl max-w-[85%] text-sm",
-                m.role === "user" ? "bg-blue-600 text-white ml-auto" : 
-                m.role === "system" ? "bg-red-500/20 text-red-200" : 
-                "bg-white/5 text-zinc-300 mr-auto border border-white/10"
-              )}>
-                <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>
-              </div>
-            ))}
-            <div ref={chatEndRef} />
+          <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-6 space-y-4">
+            <AnimatePresence initial={false}>
+              {messages.map((m, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className={cn(
+                    "p-4 rounded-2xl max-w-[85%] text-sm",
+                    m.role === "user" ? "bg-blue-600 text-white ml-auto" : 
+                    m.role === "system" ? "bg-red-500/20 text-red-200" : 
+                    "bg-white/5 text-zinc-300 mr-auto border border-white/10"
+                  )}
+                >
+                  <p className="whitespace-pre-wrap break-words leading-relaxed overflow-hidden">{m.content}</p>
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
 
           <div className="p-4 border-t border-white/5 bg-black/40 relative">
@@ -274,31 +341,43 @@ export const AstraAgent = () => {
                />
                <button
                  onClick={() => fileInputRef.current?.click()}
-                 disabled={isUploading}
-                 className="p-3 bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white rounded-xl transition-all border border-white/10 shrink-0"
+                 disabled={isUploading || isStreaming}
+                 className="p-3 bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white rounded-xl transition-all border border-white/10 shrink-0 disabled:opacity-50"
                  title="Upload Document"
                >
                  {isUploading ? <Loader2 size={18} className="animate-spin" /> : <Paperclip size={18} />}
                </button>
                <input
-                 className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm text-white placeholder-zinc-500 transition-all"
+                 className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm text-white placeholder-zinc-500 transition-all disabled:opacity-50"
                  placeholder="Assign task coordinates to ASTRA..."
                  value={input}
+                 disabled={isStreaming}
                  onChange={(e) => setInput(e.target.value)}
-                 onKeyDown={(e) => e.key === "Enter" && runAgentTask(input)}
+                 onKeyDown={(e) => e.key === "Enter" && !isStreaming && runAgentTask(input)}
                />
-               <button 
-                onClick={() => runAgentTask(input)}
-                className="bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl transition-colors shrink-0"
-               >
-                 <Send size={18} />
-               </button>
+               {isStreaming ? (
+                 <button 
+                   onClick={handleStopGeneration}
+                   className="bg-red-600 hover:bg-red-500 text-white p-3 rounded-xl transition-colors shrink-0 animate-pulse"
+                   title="Stop generation"
+                 >
+                   <StopCircle size={18} />
+                 </button>
+               ) : (
+                 <button 
+                   onClick={() => runAgentTask(input)}
+                   disabled={!input.trim() || isStreaming}
+                   className="bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                 >
+                   <Send size={18} />
+                 </button>
+               )}
              </div>
           </div>
         </div>
 
         {/* Right: Agent Avatar Visor */}
-        <div className="w-1/3 min-w-[300px] flex flex-col gap-6">
+        <div className="w-1/3 min-w-[300px] min-h-0 flex flex-col gap-6">
           <div className="glass flex-1 rounded-[2rem] border border-white/5 p-6 flex items-center justify-center relative overflow-hidden group">
             {/* Visual background syncs with state */}
             <div className={cn("absolute inset-0 opacity-10 transition-colors duration-1000", statusColor)} />
@@ -311,6 +390,7 @@ export const AstraAgent = () => {
                         avatarState === "idle" ? "text-emerald-500" :
                         avatarState === "thinking" ? "text-purple-500" :
                         avatarState === "typing" ? "text-blue-500 animate-bounce" :
+                        avatarState === "waking" ? "text-orange-500 animate-pulse" :
                         "text-amber-500 animate-pulse"
                      )} />
                   </div>
@@ -330,15 +410,34 @@ export const AstraAgent = () => {
             </div>
           </div>
           
-          {/* Debug Console */}
+          {/* Debug Console — Internal Telemetry */}
           <div className="h-48 rounded-[2rem] bg-black border border-white/5 p-6 relative overflow-hidden flex flex-col">
              <div className="flex items-center gap-2 mb-4 text-zinc-600">
                 <Terminal size={14} />
                 <span className="text-[10px] font-bold uppercase tracking-widest">Internal Telemetry</span>
              </div>
-             <div className="text-[10px] font-mono text-emerald-500 animate-pulse">
-                [SYSTEM] Stream Connection Valid<br/>
-                [EVENT] Last broadcast mapping: {avatarState.toUpperCase()}
+             <div className="text-[10px] font-mono text-emerald-500 flex-1 overflow-y-auto space-y-1">
+                <p className="animate-pulse">[SYSTEM] Stream Connection Valid</p>
+                <p>[EVENT] Last broadcast mapping: {avatarState.toUpperCase()}</p>
+                <AnimatePresence>
+                  {thinkingText && (
+                    <motion.p
+                      key="thinking"
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className={cn(
+                        "mt-1",
+                        avatarState === "waking" ? "text-orange-400" : "text-purple-400"
+                      )}
+                    >
+                      [{avatarState === "waking" ? "WAKING" : "THOUGHT"}] {thinkingText}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+                {isStreaming && (
+                  <p className="text-blue-400 animate-pulse">[STREAM] Active SSE connection — receiving events</p>
+                )}
              </div>
           </div>
         </div>

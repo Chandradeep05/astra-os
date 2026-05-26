@@ -44,6 +44,12 @@ async def _direct_llm_stream(request: AgentRequest):
     ollama = OllamaService(model_name=model)
 
     try:
+        # Auto-wake if model is sleeping
+        if not OllamaService._model_loaded:
+            wake_event = AgentStreamEvent(type="thought", content="Waking up ASTRA...")
+            yield f"data: {json.dumps(wake_event.model_dump(exclude_none=True))}\n\n"
+            await ollama.warmup_model()
+
         async for chunk in ollama.stream_invoke(
             prompt=request.task,
             history=[{"role": "system", "content": _DIRECT_SYSTEM_PROMPT}],
@@ -169,6 +175,12 @@ async def _memory_bypass_stream(request: AgentRequest):
                     f"Summarize these memories naturally as a direct response to the user. "
                     f"Be specific — mention each fact you recall."
                 )
+
+                # Auto-wake if model is sleeping
+                if not OllamaService._model_loaded:
+                    wake_event = AgentStreamEvent(type="thought", content="Waking up ASTRA...")
+                    yield f"data: {json.dumps(wake_event.model_dump(exclude_none=True))}\n\n"
+                    await ollama.warmup_model()
 
                 async for chunk in ollama.stream_invoke(
                     prompt=augmented,
@@ -464,6 +476,12 @@ async def _rag_bypass_stream(request: AgentRequest):
         model = request.model or settings.DEFAULT_MODEL
         ollama = OllamaService(model_name=model)
 
+        # Auto-wake if model is sleeping
+        if not OllamaService._model_loaded:
+            wake_event = AgentStreamEvent(type="thought", content="Waking up ASTRA...")
+            yield f"data: {json.dumps(wake_event.model_dump(exclude_none=True))}\n\n"
+            await ollama.warmup_model()
+
         async for chunk in ollama.stream_invoke(
             prompt=augmented_prompt,
             history=[{"role": "system", "content": _RAG_SYSTEM_PROMPT}],
@@ -556,6 +574,12 @@ async def _web_search_bypass_stream(request: AgentRequest):
 
         model = request.model or settings.DEFAULT_MODEL
         ollama = OllamaService(model_name=model)
+
+        # Auto-wake if model is sleeping
+        if not OllamaService._model_loaded:
+            wake_event = AgentStreamEvent(type="thought", content="Waking up ASTRA...")
+            yield f"data: {json.dumps(wake_event.model_dump(exclude_none=True))}\n\n"
+            await ollama.warmup_model()
 
         async for chunk in ollama.stream_invoke(
             prompt=augmented_prompt,

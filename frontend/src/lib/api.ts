@@ -1,3 +1,28 @@
+export interface WatchedDirectory {
+  id: number;
+  path: string;
+  project_id: string;
+  enabled: boolean;
+  recursive: boolean;
+  allowed_extensions: string;
+  debounce_seconds: number;
+  created_at: string;
+  last_scan_at?: string;
+  file_count?: number;
+}
+
+export interface ScheduledTask {
+  id: number;
+  name: string;
+  cron_expression: string;
+  agent_prompt: string;
+  project_id: string;
+  enabled: boolean;
+  created_at: string;
+  last_run?: string;
+  next_run?: string;
+}
+
 export interface Document {
   file_id: string;
   filename: string;
@@ -58,7 +83,48 @@ export interface ProjectCreate {
   metadata?: any;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+
+// ── Auth token management ──────────────────────────────────────────────
+// Fetch the local session token once from the (public) /auth/token endpoint
+// and cache it for the lifetime of the app. All API calls include it as
+// Authorization: Bearer <token>.
+let _cachedToken: string | null = null;
+
+export async function getAuthToken(): Promise<string> {
+  if (_cachedToken) return _cachedToken;
+  try {
+    const res = await fetch(`${API_BASE_URL}/auth/token`);
+    if (res.ok) {
+      const data = await res.json();
+      _cachedToken = data.token;
+      return _cachedToken!;
+    }
+  } catch {
+    // Fall through — backend may not be up yet
+  }
+  return "";
+}
+
+export function authHeaders(extra?: Record<string, string>): Record<string, string> {
+  const headers: Record<string, string> = { ...extra };
+  if (_cachedToken) {
+    headers["Authorization"] = `Bearer ${_cachedToken}`;
+  }
+  return headers;
+}
+
+export async function authFetch(url: string, opts: RequestInit = {}): Promise<Response> {
+  // Ensure token is loaded before first request
+  if (!_cachedToken) await getAuthToken();
+  
+  const headers = new Headers(opts.headers || {});
+  if (_cachedToken) {
+    headers.set("Authorization", `Bearer ${_cachedToken}`);
+  }
+  
+  return fetch(url, { ...opts, headers });
+}
 
 export interface Workflow {
   id: string;
@@ -100,7 +166,7 @@ export interface ChatResponse {
 
 export const api = {
   sendMessage: async (chatRequest: ChatRequest): Promise<ChatResponse> => {
-    const response = await fetch(`${API_BASE_URL}/chat`, {
+    const response = await authFetch(`${API_BASE_URL}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(chatRequest),
@@ -110,13 +176,13 @@ export const api = {
   },
 
   getProjects: async (): Promise<Project[]> => {
-    const response = await fetch(`${API_BASE_URL}/projects`);
+    const response = await authFetch(`${API_BASE_URL}/projects`);
     if (!response.ok) throw new Error("Failed to fetch projects");
     return response.json();
   },
 
   createProject: async (project: ProjectCreate): Promise<Project> => {
-    const response = await fetch(`${API_BASE_URL}/projects`, {
+    const response = await authFetch(`${API_BASE_URL}/projects`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(project),
@@ -126,7 +192,7 @@ export const api = {
   },
 
   getProject: async (id: string): Promise<Project> => {
-    const response = await fetch(`${API_BASE_URL}/projects/${id}`);
+    const response = await authFetch(`${API_BASE_URL}/projects/${id}`);
     if (!response.ok) throw new Error("Failed to fetch project details");
     return response.json();
   },
@@ -135,7 +201,7 @@ export const api = {
     id: string,
     project: ProjectUpdate
   ): Promise<Project> => {
-    const response = await fetch(`${API_BASE_URL}/projects/${id}`, {
+    const response = await authFetch(`${API_BASE_URL}/projects/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(project),
@@ -145,7 +211,7 @@ export const api = {
   },
 
   deleteProject: async (id: string): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/projects/${id}`, {
+    const response = await authFetch(`${API_BASE_URL}/projects/${id}`, {
       method: "DELETE",
     });
     if (!response.ok) throw new Error("Failed to delete project");
@@ -156,13 +222,13 @@ export const api = {
     const url = projectId
       ? `${API_BASE_URL}/workflows?project_id=${projectId}`
       : `${API_BASE_URL}/workflows`;
-    const response = await fetch(url);
+    const response = await authFetch(url);
     if (!response.ok) throw new Error("Failed to fetch workflows");
     return response.json();
   },
 
   createWorkflow: async (workflow: any): Promise<Workflow> => {
-    const response = await fetch(`${API_BASE_URL}/workflows`, {
+    const response = await authFetch(`${API_BASE_URL}/workflows`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(workflow),
@@ -172,7 +238,7 @@ export const api = {
   },
 
   triggerWorkflow: async (id: string): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/workflows/${id}/trigger`, {
+    const response = await authFetch(`${API_BASE_URL}/workflows/${id}/trigger`, {
       method: "POST",
     });
     if (!response.ok) throw new Error("Failed to trigger workflow");
@@ -191,7 +257,7 @@ export const api = {
     // Extract the latest user message as the task for the agent
     const task = chatRequest.messages.length > 0 ? chatRequest.messages[chatRequest.messages.length - 1].content : "";
     
-    const response = await fetch(`${API_BASE_URL}/agent/run`, {
+    const response = await authFetch(`${API_BASE_URL}/agent/run`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -259,7 +325,7 @@ export const api = {
     limit: number = 50,
     offset: number = 0
   ): Promise<EpisodicMemoryResponse> => {
-    const response = await fetch(
+    const response = await authFetch(
       `${API_BASE_URL}/memory?project_id=${projectId}&limit=${limit}&offset=${offset}`
     );
     if (!response.ok) throw new Error("Failed to fetch memory episodes");
@@ -267,20 +333,20 @@ export const api = {
   },
 
   deleteMemoryEpisode: async (episodeId: string): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/memory/${episodeId}`, {
+    const response = await authFetch(`${API_BASE_URL}/memory/${episodeId}`, {
       method: "DELETE",
     });
     if (!response.ok) throw new Error("Failed to delete memory episode");
   },
 
   listDocuments: async (projectId: string): Promise<{ documents: Document[] }> => {
-    const response = await fetch(`${API_BASE_URL}/documents/list/${projectId}`);
+    const response = await authFetch(`${API_BASE_URL}/documents/list/${projectId}`);
     if (!response.ok) throw new Error("Failed to fetch documents");
     return response.json();
   },
 
   toggleDocument: async (fileId: string, enabled: boolean): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/documents/toggle/${fileId}?enabled=${enabled}`, {
+    const response = await authFetch(`${API_BASE_URL}/documents/toggle/${fileId}?enabled=${enabled}`, {
       method: "PATCH",
     });
     if (!response.ok) throw new Error("Failed to toggle document RAG status");
@@ -288,26 +354,26 @@ export const api = {
   },
 
   deleteDocument: async (fileId: string): Promise<void> => {
-    const response = await fetch(`${API_BASE_URL}/documents/${fileId}`, {
+    const response = await authFetch(`${API_BASE_URL}/documents/${fileId}`, {
       method: "DELETE",
     });
     if (!response.ok) throw new Error("Failed to delete document");
   },
 
   getStats: async (): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/agent/stats`);
+    const response = await authFetch(`${API_BASE_URL}/agent/stats`);
     if (!response.ok) throw new Error("Failed to fetch system stats");
     return response.json();
   },
 
   getSettings: async (): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/agent/settings`);
+    const response = await authFetch(`${API_BASE_URL}/agent/settings`);
     if (!response.ok) throw new Error("Failed to fetch settings");
     return response.json();
   },
 
   updateSettings: async (settings: any): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/agent/settings`, {
+    const response = await authFetch(`${API_BASE_URL}/agent/settings`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(settings),
@@ -317,8 +383,141 @@ export const api = {
   },
 
   getTasks: async (projectId: string): Promise<any> => {
-    const response = await fetch(`${API_BASE_URL}/agent/tasks?project_id=${projectId}`);
+    const response = await authFetch(`${API_BASE_URL}/agent/tasks?project_id=${projectId}`);
     if (!response.ok) throw new Error("Failed to fetch background tasks");
+    return response.json();
+  },
+
+  // ── Phase 3B: Sleep Mode ─────────────────────────────────────────
+
+  sleepAgent: async (): Promise<any> => {
+    const response = await authFetch(`${API_BASE_URL}/agent/sleep`, { method: "POST" });
+    if (!response.ok) throw new Error("Failed to sleep agent");
+    return response.json();
+  },
+
+  wakeAgent: async (): Promise<any> => {
+    const response = await authFetch(`${API_BASE_URL}/agent/wake`, { method: "POST" });
+    if (!response.ok) throw new Error("Failed to wake agent");
+    return response.json();
+  },
+
+  getSleepStatus: async (): Promise<{ sleeping: boolean; model: string }> => {
+    const response = await authFetch(`${API_BASE_URL}/agent/sleep-status`);
+    if (!response.ok) throw new Error("Failed to fetch sleep status");
+    return response.json();
+  },
+
+  // ── Phase 3B: Background Task Run Count ──────────────────────────
+
+  getTaskRunCount: async (since?: string): Promise<{ count: number }> => {
+    const url = since
+      ? `${API_BASE_URL}/agent/task-run-count?since=${encodeURIComponent(since)}`
+      : `${API_BASE_URL}/agent/task-run-count`;
+    const response = await authFetch(url);
+    if (!response.ok) return { count: 0 };
+    return response.json();
+  },
+
+  // ── Phase 3B: Watcher Endpoints ──────────────────────────────────
+
+  listWatchedDirectories: async (): Promise<WatchedDirectory[]> => {
+    const response = await authFetch(`${API_BASE_URL}/watcher/directories`);
+    if (!response.ok) throw new Error("Failed to fetch watched directories");
+    return response.json();
+  },
+
+  addWatchedDirectory: async (
+    dir: Omit<WatchedDirectory, "id" | "created_at">
+  ): Promise<WatchedDirectory> => {
+    const response = await authFetch(`${API_BASE_URL}/watcher/directories`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(dir),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ detail: "Failed to add watched directory" }));
+      throw new Error(err.detail || "Failed to add watched directory");
+    }
+    return response.json();
+  },
+
+  updateWatchedDirectory: async (
+    id: number,
+    updates: Partial<WatchedDirectory>
+  ): Promise<WatchedDirectory> => {
+    const response = await authFetch(`${API_BASE_URL}/watcher/directories/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+    if (!response.ok) throw new Error("Failed to update watched directory");
+    return response.json();
+  },
+
+  deleteWatchedDirectory: async (id: number): Promise<void> => {
+    const response = await authFetch(`${API_BASE_URL}/watcher/directories/${id}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) throw new Error("Failed to delete watched directory");
+  },
+
+  triggerWatchedDirectoryScan: async (id: number): Promise<{ status: string; indexed_count: number }> => {
+    const response = await authFetch(`${API_BASE_URL}/watcher/directories/${id}/scan`, {
+      method: "POST",
+    });
+    if (!response.ok) throw new Error("Failed to trigger directory scan");
+    return response.json();
+  },
+
+  // ── Phase 3B: Scheduler Endpoints ────────────────────────────────
+
+  listScheduledTasks: async (): Promise<ScheduledTask[]> => {
+    const response = await authFetch(`${API_BASE_URL}/scheduler/tasks`);
+    if (!response.ok) throw new Error("Failed to fetch scheduled tasks");
+    return response.json();
+  },
+
+  addScheduledTask: async (
+    task: Omit<ScheduledTask, "id" | "created_at">
+  ): Promise<ScheduledTask> => {
+    const response = await authFetch(`${API_BASE_URL}/scheduler/tasks`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(task),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ detail: "Failed to add scheduled task" }));
+      throw new Error(err.detail || "Failed to add scheduled task");
+    }
+    return response.json();
+  },
+
+  updateScheduledTask: async (
+    id: number,
+    updates: Partial<ScheduledTask>
+  ): Promise<ScheduledTask> => {
+    const response = await authFetch(`${API_BASE_URL}/scheduler/tasks/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+    if (!response.ok) throw new Error("Failed to update scheduled task");
+    return response.json();
+  },
+
+  deleteScheduledTask: async (id: number): Promise<void> => {
+    const response = await authFetch(`${API_BASE_URL}/scheduler/tasks/${id}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) throw new Error("Failed to delete scheduled task");
+  },
+
+  triggerScheduledTask: async (id: number): Promise<any> => {
+    const response = await authFetch(`${API_BASE_URL}/scheduler/tasks/${id}/trigger`, {
+      method: "POST",
+    });
+    if (!response.ok) throw new Error("Failed to trigger scheduled task");
     return response.json();
   },
 };

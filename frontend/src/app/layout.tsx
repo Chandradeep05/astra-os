@@ -19,7 +19,7 @@ export default function RootLayout({
       <body className={`${inter.className} bg-background text-foreground overflow-hidden`}>
         <div className="flex h-screen w-full overflow-hidden">
           {/* Main Content Area */}
-          <main className="flex-1 relative flex flex-col min-w-0">
+          <main className="flex-1 relative flex flex-col min-w-0 h-full overflow-hidden">
             {children}
           </main>
         </div>

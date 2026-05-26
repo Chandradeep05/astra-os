@@ -113,6 +113,7 @@ class AgentLoop:
         project_id: str = "default",
         max_iterations: int = 5,
         query_class: str = None,  # None = full retrieval as safe fallback; set by classifier in agent.py
+        session_id: str = "",
     ) -> AsyncGenerator[AgentStreamEvent, None]:
         """
         Execute the full OTPAR cognitive loop for a given task.
@@ -385,6 +386,7 @@ class AgentLoop:
                             success=True,
                             summary=str(final_ans)[:200],
                             project_id=project_id,
+                            session_id=session_id,
                         )
                         break
 
@@ -596,6 +598,7 @@ class AgentLoop:
                                     success=True,
                                     summary=str(final_ans)[:200],
                                     project_id=project_id,
+                                    session_id=session_id,
                                 )
                     except json.JSONDecodeError:
                         pass  # Reflection parse failed — continue loop normally
@@ -634,6 +637,7 @@ class AgentLoop:
                 success=False,
                 summary=msg[:200],
                 project_id=project_id,
+                session_id=session_id,
             )
 
     def _build_tool_prompt(self) -> str:

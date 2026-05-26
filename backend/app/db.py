@@ -139,6 +139,119 @@ def create_db_and_tables():
         except Exception as e:
             logger.error(f"Error creating schema_migrations table: {e}")
 
+    # ── Phase 3B: Background task runs ──────────────────────────────
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS background_task_runs (
+                    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                    task_type       TEXT NOT NULL,
+                    task_name       TEXT,
+                    status          TEXT DEFAULT 'running',
+                    project_id      TEXT,
+                    started_at      TEXT DEFAULT (datetime('now')),
+                    completed_at    TEXT,
+                    result_summary  TEXT,
+                    error           TEXT,
+                    metadata        TEXT,
+                    duration_ms     INTEGER
+                )
+            """))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_btr_project ON background_task_runs(project_id)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_btr_type ON background_task_runs(task_type)"))
+            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_btr_started ON background_task_runs(started_at DESC)"))
+            conn.commit()
+            logger.info("Background task runs table initialized.")
+        except Exception as e:
+            logger.error(f"Error creating background_task_runs table: {e}")
+
+    # ── Phase 3B: Watched directories ───────────────────────────────
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS watched_directories (
+                    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+                    path                TEXT NOT NULL UNIQUE,
+                    project_id          TEXT NOT NULL DEFAULT 'default',
+                    enabled             INTEGER NOT NULL DEFAULT 1,
+                    recursive           INTEGER NOT NULL DEFAULT 0,
+                    allowed_extensions  TEXT NOT NULL DEFAULT '.pdf,.txt,.md,.docx,.csv,.xlsx,.pptx',
+                    debounce_seconds    INTEGER NOT NULL DEFAULT 2,
+                    created_at          TEXT DEFAULT (datetime('now')),
+                    last_scan_at        TEXT,
+                    file_count          INTEGER NOT NULL DEFAULT 0
+                )
+            """))
+            conn.commit()
+            logger.info("Watched directories table initialized.")
+        except Exception as e:
+            logger.error(f"Error creating watched_directories table: {e}")
+
+    # ── Phase 3B: Scheduled tasks ───────────────────────────────────
+    with engine.connect() as conn:
+        try:
+            # Drop legacy TEXT primary key table if it exists to migrate to INTEGER
+            schema_info = conn.execute(text("PRAGMA table_info(scheduled_tasks)")).fetchall()
+            if schema_info:
+                id_col = [col for col in schema_info if col[1] == "id"]
+                if id_col and "TEXT" in id_col[0][2].upper():
+                    logger.warning("Migrating scheduled_tasks table id from TEXT to INTEGER...")
+                    conn.execute(text("DROP TABLE scheduled_tasks"))
+                    conn.commit()
+        except Exception as e:
+            logger.warning(f"Failed to check/drop legacy scheduled_tasks table: {e}")
+
+        try:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS scheduled_tasks (
+                    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name            TEXT NOT NULL,
+                    description     TEXT,
+                    cron_expression TEXT NOT NULL,
+                    agent_prompt    TEXT NOT NULL,
+                    project_id      TEXT NOT NULL DEFAULT 'default',
+                    enabled         INTEGER NOT NULL DEFAULT 1,
+                    last_run        TEXT,
+                    next_run        TEXT,
+                    created_at      TEXT DEFAULT (datetime('now'))
+                )
+            """))
+            conn.commit()
+            logger.info("Scheduled tasks table initialized.")
+        except Exception as e:
+            logger.error(f"Error creating scheduled_tasks table: {e}")
+
+    # ── Phase 3B: Extend documents table ────────────────────────────
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("ALTER TABLE documents ADD COLUMN file_hash TEXT"))
+            conn.commit()
+            logger.info("Database schema patched: added file_hash column to documents.")
+        except Exception:
+            pass  # Column already exists
+        try:
+            conn.execute(text("ALTER TABLE documents ADD COLUMN missing INTEGER NOT NULL DEFAULT 0"))
+            conn.commit()
+            logger.info("Database schema patched: added missing column to documents.")
+        except Exception:
+            pass  # Column already exists
+
+    # ── Phase 3B: Startup zombie recovery ───────────────────────────
+    with engine.connect() as conn:
+        try:
+            result = conn.execute(text("""
+                UPDATE background_task_runs
+                SET status = 'failed',
+                    error = 'Server restarted during execution',
+                    completed_at = datetime('now')
+                WHERE status = 'running'
+            """))
+            if result.rowcount > 0:
+                logger.warning(f"Recovered {result.rowcount} zombie task(s) from previous crash.")
+            conn.commit()
+        except Exception as e:
+            logger.error(f"Error recovering zombie tasks: {e}")
+
     # 4. Ensure a 'default' project exists for the Main Chat
     from app.models.project import ProjectModel
     with Session(engine) as session:
