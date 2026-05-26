@@ -23,10 +23,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
-import { api } from "@/lib/api";
+import { api, authFetch, API_BASE_URL } from "@/lib/api";
 import { useWebLLM } from "../hooks/useWebLLM";
 
-// Derive API base from environment — same source of truth as api.ts
+// Derive API host from environment for constructing non-fetch URLs (e.g. img src, download href)
 const API_HOST = process.env.NEXT_PUBLIC_API_URL
   ? process.env.NEXT_PUBLIC_API_URL.replace("/api/v1", "")
   : "http://127.0.0.1:8000";
@@ -352,8 +352,8 @@ export const ChatInterface = ({
     formData.append("project_id", project_id);
 
     try {
-      const response = await fetch(
-        `${API_HOST}/api/v1/documents/upload`,
+      const response = await authFetch(
+        `${API_BASE_URL}/documents/upload`,
         {
           method: "POST",
           body: formData,
@@ -669,7 +669,10 @@ export const ChatInterface = ({
                       {">> "}AGENT: {activeAgent.toUpperCase()}
                     </div>
                     <div className="text-[10px] font-mono text-zinc-600 animate-pulse">
-                      {">> "}STREAMING RESPONSE...
+                      {">> "}
+                      {messages[messages.length - 1]?.thoughts?.some(t => t.includes("Waking up"))
+                        ? "WAKING UP ASTRA (LOAD IN PROGRESS)..."
+                        : "STREAMING RESPONSE..."}
                     </div>
                   </div>
                   <button

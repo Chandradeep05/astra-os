@@ -22,4 +22,16 @@ class AuditService:
         except Exception as e:
             logger.error(f"Audit Log failed: {e}")
 
+    def log_approval(self, tool_name: str, approved: bool, task_id: str = "", project_id: str = "default"):
+        """Log a tool approval/rejection event into the audit trail."""
+        status = "APPROVED" if approved else "REJECTED"
+        details = f"Tool '{tool_name}' {status.lower()} by user"
+        if task_id:
+            details += f" (task_id: {task_id})"
+        self.log_action(
+            action_type="TOOL_APPROVAL",
+            details=details,
+            project_id=project_id,
+        )
+
 audit_service = AuditService()

@@ -49,3 +49,7 @@ gunicorn
 
 # System stats
 psutil>=5.9.0
+
+# Watcher and Scheduler
+watchdog>=4.0.0
+apscheduler>=3.10.0

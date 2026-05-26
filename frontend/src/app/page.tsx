@@ -9,7 +9,9 @@ import { MemoryBrowser } from "@/components/MemoryBrowser";
 import { DocumentManager } from "@/components/DocumentManager";
 import { SettingsPanel } from "@/components/SettingsPanel";
 import { BackgroundTasks } from "@/components/BackgroundTasks";
+import { ScheduledTasks } from "@/components/ScheduledTasks";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AstraRuntimeProvider } from "@/hooks/useAstraRuntime";
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function Home() {
@@ -22,14 +24,15 @@ export default function Home() {
     if (label) setActiveProjectName(label);
     
     // Preserve the actual active project context if switching to virtual views
-    const virtualViews = ["dashboard", "agent", "memory-browser", "documents", "tasks", "settings"];
+    const virtualViews = ["dashboard", "agent", "memory-browser", "documents", "tasks", "settings", "scheduled-tasks"];
     if (!virtualViews.includes(id)) {
       setCurrentProjectContext(id);
     }
   };
 
   return (
-    <div className="flex w-full h-full bg-black overflow-hidden relative">
+    <AstraRuntimeProvider>
+    <div className="flex w-full h-screen bg-black overflow-hidden relative">
       <Sidebar 
         activeProject={activeProjectId} 
         onSelectProject={handleSelectProject} 
@@ -115,6 +118,19 @@ export default function Home() {
                 <SettingsPanel />
               </ErrorBoundary>
             </motion.div>
+          ) : activeProjectId === "scheduled-tasks" ? (
+            <motion.div
+              key="scheduled-tasks"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.4, ease: "circOut" }}
+              className="h-full w-full"
+            >
+              <ErrorBoundary>
+                <ScheduledTasks />
+              </ErrorBoundary>
+            </motion.div>
           ) : (
             <motion.div
               key={activeProjectId}
@@ -136,5 +152,6 @@ export default function Home() {
       <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-emerald-500/5 blur-[150px] rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none opacity-40 animate-pulse" />
       <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-blue-500/5 blur-[130px] rounded-full translate-y-1/2 -translate-x-1/2 pointer-events-none opacity-40" />
     </div>
+    </AstraRuntimeProvider>
   );
 }

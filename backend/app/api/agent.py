@@ -495,6 +495,14 @@ async def approve_task(task_id: str, approved: bool = Query(..., description="Wh
         raise HTTPException(status_code=404, detail="Approval request not found or expired.")
     
     await gate.submit_decision(task_id, approved)
+    
+    # Log approval event to audit trail (OBS007: approval events visible in Execution Engine)
+    audit_service.log_approval(
+        tool_name=getattr(gate, 'tool_name', 'unknown'),
+        approved=approved,
+        task_id=task_id,
+    )
+    
     return {"status": "ok", "message": "Decision submitted"}
 
 
@@ -623,5 +631,109 @@ async def get_background_tasks(project_id: str = "default"):
     return {
         "logs": logs,
         "workflows": workflows
+    }
+
+
+# ── Phase 3B: Task run count for unread badge ─────────────────────
+
+@router.get("/task-run-count")
+async def get_task_run_count(since: str = Query(default=None)):
+    """Count background task runs, optionally since a timestamp."""
+    from app.db import engine
+    from sqlmodel import Session
+    from sqlalchemy import text
+    try:
+        with Session(engine) as session:
+            if since:
+                result = session.execute(
+                    text("SELECT COUNT(*) as cnt FROM background_task_runs WHERE completed_at > :since"),
+                    {"since": since}
+                )
+            else:
+                result = session.execute(
+                    text("SELECT COUNT(*) as cnt FROM background_task_runs WHERE status = 'completed'")
+                )
+            row = result.first()
+            return {"count": row.cnt if row else 0}
+    except Exception as e:
+        logger.error(f"Error fetching task run count: {e}")
+        return {"count": 0}
+
+
+# ── Phase 3B: Sleep Mode Endpoints ─────────────────────────────────
+
+@router.post("/sleep")
+async def sleep_agent():
+    """Unload model from memory to free RAM."""
+    from app.services.ollama import ollama_service
+    from app.services.task_logger import create_task_run, complete_task_run, fail_task_run
+    from app.services.audit_service import audit_service
+    import time
+    start = time.time()
+    task_id = create_task_run(
+        "sleep_wake", 
+        "Model sleep", 
+        metadata={"action": "sleep", "model": settings.DEFAULT_MODEL}
+    )
+    
+    success = await ollama_service.unload_model()
+    duration = int((time.time() - start) * 1000)
+    
+    if task_id:
+        if success:
+            complete_task_run(task_id, "Model unloaded", duration)
+        else:
+            fail_task_run(task_id, "Failed to unload model", duration)
+    
+    # Log to audit trail so it appears in Execution Engine UI
+    audit_service.log_action(
+        "SLEEP_WAKE",
+        f"Model {'unloaded (sleep)' if success else 'failed to unload'} — {settings.DEFAULT_MODEL} ({duration}ms)",
+        "system",
+    )
+    
+    return {"status": "sleeping" if success else "error", "freed_model": settings.DEFAULT_MODEL}
+
+
+@router.post("/wake")
+async def wake_agent():
+    """Pre-load model into memory."""
+    from app.services.ollama import ollama_service
+    from app.services.task_logger import create_task_run, complete_task_run, fail_task_run
+    from app.services.audit_service import audit_service
+    import time
+    start = time.time()
+    task_id = create_task_run(
+        "sleep_wake", 
+        "Model wake", 
+        metadata={"action": "wake", "model": settings.DEFAULT_MODEL}
+    )
+    
+    success = await ollama_service.warmup_model()
+    duration = int((time.time() - start) * 1000)
+    
+    if task_id:
+        if success:
+            complete_task_run(task_id, f"Model loaded in {duration}ms", duration)
+        else:
+            fail_task_run(task_id, "Failed to load model", duration)
+    
+    # Log to audit trail so it appears in Execution Engine UI
+    audit_service.log_action(
+        "SLEEP_WAKE",
+        f"Model {'loaded (wake)' if success else 'failed to load'} — {settings.DEFAULT_MODEL} ({duration}ms)",
+        "system",
+    )
+    
+    return {"status": "awake" if success else "error", "model": settings.DEFAULT_MODEL, "load_time_ms": duration}
+
+
+@router.get("/sleep-status")
+async def get_sleep_status():
+    """Check if model is currently loaded."""
+    from app.services.ollama import ollama_service
+    return {
+        "sleeping": not ollama_service._model_loaded,
+        "model": settings.DEFAULT_MODEL,
     }
 

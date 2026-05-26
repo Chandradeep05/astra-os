@@ -13,13 +13,29 @@ import {
   ShieldAlert,
   Sliders,
   Cpu,
-  UserCheck
+  UserCheck,
+  Moon,
+  Sun,
+  FolderPlus,
+  RefreshCw,
+  Folder
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { useAstraRuntime } from "@/hooks/useAstraRuntime";
 
 export const SettingsPanel = () => {
+  const {
+    sleepStatus,
+    sleepEnabled,
+    sleepTimeoutMinutes,
+    triggerSleep,
+    triggerWake,
+    setSleepEnabled,
+    setSleepTimeout,
+  } = useAstraRuntime();
+
   const [settings, setSettings] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -29,6 +45,16 @@ export const SettingsPanel = () => {
   // Input states for adding new rules
   const [newDoRule, setNewDoRule] = useState("");
   const [newDontRule, setNewDontRule] = useState("");
+
+  // Watcher state
+  const [watchedDirs, setWatchedDirs] = useState<any[]>([]);
+  const [isWatcherLoading, setIsWatcherLoading] = useState(true);
+  const [watcherPath, setWatcherPath] = useState("");
+  const [watcherProject, setWatcherProject] = useState("default");
+  const [watcherRecursive, setWatcherRecursive] = useState(false);
+  const [watcherExtensions, setWatcherExtensions] = useState(".txt,.md,.pdf,.csv,.docx");
+  const [watcherDebounce, setWatcherDebounce] = useState(2);
+  const [projects, setProjects] = useState<any[]>([]);
 
   const fetchSettings = async () => {
     try {
@@ -43,8 +69,23 @@ export const SettingsPanel = () => {
     }
   };
 
+  const fetchWatcherAndProjects = async () => {
+    try {
+      setIsWatcherLoading(true);
+      const dirs = await api.listWatchedDirectories();
+      setWatchedDirs(dirs);
+      const projs = await api.getProjects();
+      setProjects(projs);
+    } catch (err) {
+      console.error("Failed to load watcher dirs or projects:", err);
+    } finally {
+      setIsWatcherLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchSettings();
+    fetchWatcherAndProjects();
   }, []);
 
   const handleSave = async () => {
@@ -113,6 +154,61 @@ export const SettingsPanel = () => {
       ...prev,
       dont_rules: prev.dont_rules.filter((_: any, i: number) => i !== index)
     }));
+  };
+
+  const handleAddWatcher = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!watcherPath.trim()) return;
+    try {
+      const newDir = await api.addWatchedDirectory({
+        path: watcherPath.trim(),
+        project_id: watcherProject,
+        recursive: watcherRecursive,
+        allowed_extensions: watcherExtensions.trim(),
+        debounce_seconds: Number(watcherDebounce) || 2,
+        enabled: true,
+      });
+      setWatchedDirs((prev) => [...prev, newDir]);
+      setWatcherPath("");
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to add watched directory");
+    }
+  };
+
+  const handleDeleteWatcher = async (id: number) => {
+    try {
+      await api.deleteWatchedDirectory(id);
+      setWatchedDirs((prev) => prev.filter((d) => d.id !== id));
+    } catch (err: any) {
+      console.error(err);
+      alert("Failed to delete watched directory");
+    }
+  };
+
+  const handleToggleWatcher = async (dir: any) => {
+    try {
+      const updated = await api.updateWatchedDirectory(dir.id, {
+        enabled: !dir.enabled,
+      });
+      setWatchedDirs((prev) =>
+        prev.map((d) => (d.id === dir.id ? { ...d, enabled: updated.enabled } : d))
+      );
+    } catch (err: any) {
+      console.error(err);
+      alert("Failed to toggle watched directory status");
+    }
+  };
+
+  const handleScanWatcher = async (id: number) => {
+    try {
+      alert("Scan triggered. Files are being processed in the background.");
+      await api.triggerWatchedDirectoryScan(id);
+      fetchWatcherAndProjects();
+    } catch (err: any) {
+      console.error(err);
+      alert("Failed to trigger scan");
+    }
   };
 
   if (isLoading) {
@@ -201,6 +297,86 @@ export const SettingsPanel = () => {
         {/* Left Column: General & Constraints & Security */}
         <div className="space-y-8 xl:col-span-1">
           
+          {/* Sleep Mode Card */}
+          <div className="glass p-6 rounded-[2rem] border border-white/5 space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                {sleepStatus.sleeping ? (
+                  <Moon size={16} className="text-amber-500 animate-pulse" />
+                ) : (
+                  <Sun size={16} className="text-emerald-500" />
+                )}
+                Sleep Mode
+              </h3>
+              <span className={cn(
+                "text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border",
+                sleepStatus.sleeping 
+                  ? "bg-amber-500/10 border-amber-500/20 text-amber-400" 
+                  : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+              )}>
+                {sleepStatus.sleeping ? "Sleeping" : "Awake"}
+              </span>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-200">Auto-Sleep</label>
+                  <span className="text-[10px] text-zinc-500">Unload model when inactive</span>
+                </div>
+                <button
+                  onClick={() => setSleepEnabled(!sleepEnabled)}
+                  className={cn(
+                    "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
+                    sleepEnabled ? "bg-emerald-600" : "bg-zinc-800"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "inline-block h-4 w-4 transform rounded-full bg-white transition-transform",
+                      sleepEnabled ? "translate-x-6" : "translate-x-1"
+                    )}
+                  />
+                </button>
+              </div>
+
+              {sleepEnabled && (
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Idle Timeout</label>
+                    <span className="text-xs font-semibold text-zinc-300">{sleepTimeoutMinutes} min</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="5"
+                    max="30"
+                    step="5"
+                    value={sleepTimeoutMinutes}
+                    onChange={(e) => setSleepTimeout(parseInt(e.target.value))}
+                    className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                  />
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                <button
+                  onClick={triggerSleep}
+                  disabled={sleepStatus.sleeping}
+                  className="px-4 py-2.5 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 text-white text-xs font-bold transition-all disabled:opacity-50"
+                >
+                  Sleep Now
+                </button>
+                <button
+                  onClick={triggerWake}
+                  disabled={!sleepStatus.sleeping}
+                  className="px-4 py-2.5 rounded-xl bg-white hover:bg-zinc-200 text-black text-xs font-bold transition-all disabled:opacity-50"
+                >
+                  Wake Up
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* General Config Card */}
           <div className="glass p-6 rounded-[2rem] border border-white/5 space-y-6">
             <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
@@ -418,6 +594,171 @@ export const SettingsPanel = () => {
                 ))}
               </AnimatePresence>
             </ul>
+          </div>
+
+          {/* Filesystem Folder Watcher */}
+          <div className="glass p-6 rounded-[2rem] border border-white/5 space-y-6">
+            <div className="flex items-center justify-between border-b border-white/5 pb-4">
+              <div className="space-y-1">
+                <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                  <Folder size={16} className="text-emerald-500" />
+                  Auto-Indexing Folder Watcher
+                </h3>
+                <p className="text-[10px] text-zinc-500">
+                  Monitor folders for changes. Added or modified files are automatically chunked and indexed into the selected RAG project.
+                </p>
+              </div>
+            </div>
+
+            {/* Add Watcher Form */}
+            <form onSubmit={handleAddWatcher} className="grid grid-cols-1 md:grid-cols-12 gap-4 bg-white/[0.01] p-4 rounded-2xl border border-white/5">
+              <div className="md:col-span-4">
+                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">Directory Path</label>
+                <input 
+                  type="text"
+                  value={watcherPath}
+                  onChange={(e) => setWatcherPath(e.target.value)}
+                  placeholder="C:\Users\username\Documents"
+                  className="w-full bg-white/5 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder:text-zinc-600 focus:ring-0 focus:border-white/10"
+                />
+              </div>
+
+              <div className="md:col-span-3">
+                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">Target RAG Project</label>
+                <select 
+                  value={watcherProject}
+                  onChange={(e) => setWatcherProject(e.target.value)}
+                  className="w-full bg-zinc-950 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:ring-0 focus:border-white/10"
+                >
+                  <option value="default">default</option>
+                  {projects.map((p: any) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">Extensions</label>
+                <input 
+                  type="text"
+                  value={watcherExtensions}
+                  onChange={(e) => setWatcherExtensions(e.target.value)}
+                  placeholder=".txt,.md"
+                  className="w-full bg-white/5 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:ring-0 focus:border-white/10"
+                />
+              </div>
+
+              <div className="md:col-span-1">
+                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">Debounce (s)</label>
+                <input 
+                  type="number"
+                  value={watcherDebounce}
+                  onChange={(e) => setWatcherDebounce(Number(e.target.value))}
+                  className="w-full bg-white/5 border border-white/5 rounded-xl px-3 py-2 text-xs text-white focus:ring-0 focus:border-white/10"
+                />
+              </div>
+
+              <div className="md:col-span-2 flex items-end">
+                <button 
+                  type="submit"
+                  className="w-full py-2 bg-emerald-500 hover:bg-emerald-600 text-black font-bold rounded-xl text-xs hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                >
+                  <FolderPlus size={14} />
+                  Watch
+                </button>
+              </div>
+
+              <div className="md:col-span-12 flex items-center gap-2">
+                <input 
+                  type="checkbox"
+                  id="recursive"
+                  checked={watcherRecursive}
+                  onChange={(e) => setWatcherRecursive(e.target.checked)}
+                  className="rounded bg-zinc-950 border border-white/5 text-emerald-500 focus:ring-0"
+                />
+                <label htmlFor="recursive" className="text-[10px] font-bold text-zinc-400 cursor-pointer select-none">
+                  Watch Subdirectories (Recursive mode)
+                </label>
+              </div>
+            </form>
+
+            {/* List of Watched Directories */}
+            <div className="space-y-2">
+              {isWatcherLoading ? (
+                <div className="text-center py-4 text-xs text-zinc-500">Loading watched folders...</div>
+              ) : watchedDirs.length === 0 ? (
+                <div className="text-center py-6 text-xs text-zinc-500 border border-dashed border-white/5 rounded-2xl">
+                  No folders are currently being watched.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {watchedDirs.map((dir: any) => (
+                    <div 
+                      key={dir.id}
+                      className={cn(
+                        "flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border transition-all text-xs",
+                        dir.enabled ? "bg-white/[0.01] border-white/5" : "bg-white/[0.005] border-white/5 opacity-50"
+                      )}
+                    >
+                      <div className="space-y-1.5 max-w-full overflow-hidden">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-white text-xs bg-zinc-900 border border-white/5 px-2 py-0.5 rounded break-all">
+                            {dir.path}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2 items-center text-[10px] text-zinc-400">
+                          <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded">
+                            Project: {dir.project_id}
+                          </span>
+                          <span className="bg-zinc-800 px-1.5 py-0.5 rounded">
+                            Exts: {dir.allowed_extensions || "*"}
+                          </span>
+                          <span className="bg-zinc-800 px-1.5 py-0.5 rounded">
+                            {dir.recursive ? "Recursive" : "Shallow"}
+                          </span>
+                          <span className="bg-zinc-800 px-1.5 py-0.5 rounded">
+                            Debounce: {dir.debounce_seconds}s
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* Toggle Enabled */}
+                        <button
+                          onClick={() => handleToggleWatcher(dir)}
+                          className={cn(
+                            "px-2.5 py-1.5 rounded-lg border text-[10px] font-bold tracking-wider transition-colors",
+                            dir.enabled 
+                              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20"
+                              : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:bg-zinc-700"
+                          )}
+                        >
+                          {dir.enabled ? "ACTIVE" : "PAUSED"}
+                        </button>
+
+                        {/* Trigger Scan */}
+                        <button
+                          onClick={() => handleScanWatcher(dir.id)}
+                          disabled={!dir.enabled}
+                          title="Scan directory now"
+                          className="p-2 bg-white/5 border border-white/5 hover:bg-white/10 rounded-lg text-zinc-300 transition-all disabled:opacity-50"
+                        >
+                          <RefreshCw size={12} className="hover:rotate-180 transition-transform duration-500" />
+                        </button>
+
+                        {/* Delete */}
+                        <button 
+                          onClick={() => handleDeleteWatcher(dir.id)}
+                          className="p-2 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 rounded-lg text-zinc-500 hover:text-red-400 transition-all"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
         </div>

@@ -48,6 +48,7 @@ class EpisodicMemory:
         success: bool,
         summary: str,
         project_id: str = "default",
+        session_id: str = "",
     ):
         """Record a completed task episode to SQLite."""
         from app.db import engine
@@ -60,9 +61,9 @@ class EpisodicMemory:
                 session.execute(
                     text("""
                         INSERT INTO episodic_memory
-                            (id, task, tools_used, success, summary, project_id, created_at)
+                            (id, task, tools_used, success, summary, project_id, session_id, created_at)
                         VALUES
-                            (:id, :task, :tools_used, :success, :summary, :project_id, :created_at)
+                            (:id, :task, :tools_used, :success, :summary, :project_id, :session_id, :created_at)
                     """),
                     {
                         "id": episode_id,
@@ -71,6 +72,7 @@ class EpisodicMemory:
                         "success": 1 if success else 0,
                         "summary": summary[:500],
                         "project_id": project_id,
+                        "session_id": session_id,
                         "created_at": datetime.utcnow().isoformat(),
                     }
                 )
@@ -468,9 +470,10 @@ class AgentMemory:
         success: bool,
         summary: str,
         project_id: str = "default",
+        session_id: str = "",
     ):
         """Record a task in episodic memory after completion."""
-        self.episodic.record_episode(task, tools_used, success, summary, project_id)
+        self.episodic.record_episode(task, tools_used, success, summary, project_id, session_id)
 
     async def memorize_fact(self, fact: str, project_id: str = "default") -> bool:
         """Store a fact in long-term memory."""
