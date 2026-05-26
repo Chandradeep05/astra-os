@@ -1,0 +1,2785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ASTRA-OS — Hardening Sprint Certification Suite</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --void: #000000;
+  --deep: #050709;
+  --layer1: #080c10;
+  --layer2: #0c1118;
+  --layer3: #111922;
+  --rim: #1a2535;
+  --rim2: #243448;
+  --plasma: #00e5ff;
+  --plasma2: #00b8d4;
+  --volt: #76ff03;
+  --fire: #ff6d00;
+  --ruby: #ff1744;
+  --gold: #ffd600;
+  --violet: #d500f9;
+  --mist: #607d8b;
+  --fog: #37474f;
+  --snow: #eceff1;
+  --ice: #b0bec5;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;background:var(--void)}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--void);
+  color:var(--ice);
+  font-size:13px;
+  line-height:1.6;
+  overflow-x:hidden;
+}
+
+/* GRAIN OVERLAY */
+body::after{
+  content:'';position:fixed;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events:none;z-index:9998;opacity:0.4;
+}
+
+/* SIDEBAR */
+.sidebar{
+  position:fixed;left:0;top:0;bottom:0;width:230px;
+  background:var(--deep);
+  border-right:1px solid var(--rim);
+  z-index:200;
+  display:flex;flex-direction:column;
+  overflow-y:auto;
+}
+.sb-logo{
+  padding:24px 20px 20px;
+  border-bottom:1px solid var(--rim);
+}
+.sb-wordmark{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:28px;letter-spacing:8px;
+  color:var(--plasma);
+  line-height:1;
+}
+.sb-tagline{
+  font-family:'DM Mono',monospace;
+  font-size:8px;letter-spacing:3px;
+  color:var(--mist);text-transform:uppercase;
+  margin-top:4px;
+}
+.sb-cert{
+  display:inline-block;
+  font-family:'DM Mono',monospace;
+  font-size:7px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--volt);
+  border:1px solid rgba(118,255,3,0.3);
+  padding:2px 8px;margin-top:8px;
+}
+
+.sb-section{
+  font-family:'DM Mono',monospace;
+  font-size:7px;letter-spacing:3px;text-transform:uppercase;
+  color:var(--fog);padding:14px 20px 5px;
+}
+.sidebar a{
+  display:flex;align-items:center;gap:9px;
+  padding:6px 20px;
+  color:var(--mist);text-decoration:none;
+  font-size:11px;
+  border-left:2px solid transparent;
+  transition:all 0.15s;
+  font-family:'DM Mono',monospace;
+}
+.sidebar a:hover,.sidebar a.active{
+  color:var(--plasma);border-left-color:var(--plasma);
+  background:rgba(0,229,255,0.04);
+}
+.sb-badge{
+  font-size:7px;padding:1px 5px;
+  border:1px solid;letter-spacing:1px;
+  font-family:'DM Mono',monospace;
+  margin-left:auto;
+}
+.sb-badge.e2e{border-color:var(--volt);color:var(--volt);}
+.sb-badge.sec{border-color:var(--ruby);color:var(--ruby);}
+.sb-badge.ui{border-color:var(--fire);color:var(--fire);}
+.sb-badge.oll{border-color:var(--gold);color:var(--gold);}
+.sb-badge.orch{border-color:var(--violet);color:var(--violet);}
+.sb-badge.obs{border-color:var(--plasma);color:var(--plasma);}
+
+/* MAIN */
+.main{margin-left:230px;min-height:100vh;}
+
+/* HERO */
+.hero{
+  padding:72px 72px 60px;
+  background:var(--deep);
+  border-bottom:1px solid var(--rim);
+  position:relative;overflow:hidden;
+}
+.hero-grid-bg{
+  position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;
+}
+.hero-glow{
+  position:absolute;top:-100px;right:-100px;
+  width:500px;height:500px;
+  background:radial-gradient(circle, rgba(0,229,255,0.06) 0%, transparent 70%);
+  pointer-events:none;
+}
+.hero-eyebrow{
+  font-family:'DM Mono',monospace;
+  font-size:8px;letter-spacing:4px;text-transform:uppercase;
+  color:var(--volt);margin-bottom:16px;
+  display:flex;align-items:center;gap:10px;
+}
+.hero-eyebrow::before{
+  content:'';display:block;width:24px;height:1px;background:var(--volt);
+}
+.hero-h1{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:80px;letter-spacing:4px;
+  line-height:0.95;color:var(--snow);
+  margin-bottom:16px;
+}
+.hero-h1 .plasma{color:var(--plasma);}
+.hero-h1 .volt{color:var(--volt);}
+.hero-desc{
+  font-size:15px;color:var(--mist);
+  max-width:600px;line-height:1.85;
+  margin-bottom:40px;font-weight:300;
+}
+.hero-kpis{display:flex;gap:0;flex-wrap:wrap;}
+.kpi{
+  padding:20px 32px;
+  border:1px solid var(--rim);
+  border-right:none;
+  background:var(--layer1);
+}
+.kpi:last-child{border-right:1px solid var(--rim);}
+.kpi-val{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:44px;letter-spacing:2px;line-height:1;
+}
+.kpi-lbl{
+  font-family:'DM Mono',monospace;
+  font-size:7px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--mist);margin-top:2px;
+}
+
+/* SPRINT BLOCKS */
+.sprint{padding:56px 72px;border-bottom:1px solid var(--rim);}
+.sprint-hdr{margin-bottom:40px;}
+.sprint-eyebrow{
+  font-family:'DM Mono',monospace;
+  font-size:7px;letter-spacing:4px;text-transform:uppercase;
+  margin-bottom:10px;display:flex;align-items:center;gap:10px;
+}
+.sprint-eyebrow::before{content:'';display:block;width:16px;height:1px;}
+.sprint-title{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:52px;letter-spacing:3px;line-height:1;
+  color:var(--snow);
+}
+.sprint-sub{
+  font-size:14px;color:var(--mist);
+  margin-top:8px;font-weight:300;max-width:680px;line-height:1.75;
+}
+.sprint-meta{
+  display:flex;gap:16px;margin-top:16px;flex-wrap:wrap;
+}
+.smeta{
+  font-family:'DM Mono',monospace;
+  font-size:9px;letter-spacing:2px;text-transform:uppercase;
+  padding:4px 12px;border:1px solid var(--rim);
+  color:var(--mist);
+}
+
+/* E2E SPECIAL — FEATURED */
+.sprint.e2e-sprint .sprint-title{color:var(--volt);}
+.sprint.e2e-sprint .sprint-eyebrow{color:var(--volt);}
+.sprint.e2e-sprint .sprint-eyebrow::before{background:var(--volt);}
+.sprint.sec-sprint .sprint-title{color:var(--ruby);}
+.sprint.sec-sprint .sprint-eyebrow{color:var(--ruby);}
+.sprint.sec-sprint .sprint-eyebrow::before{background:var(--ruby);}
+.sprint.ui-sprint .sprint-title{color:var(--fire);}
+.sprint.ui-sprint .sprint-eyebrow{color:var(--fire);}
+.sprint.ui-sprint .sprint-eyebrow::before{background:var(--fire);}
+.sprint.oll-sprint .sprint-title{color:var(--gold);}
+.sprint.oll-sprint .sprint-eyebrow{color:var(--gold);}
+.sprint.oll-sprint .sprint-eyebrow::before{background:var(--gold);}
+.sprint.orch-sprint .sprint-title{color:var(--violet);}
+.sprint.orch-sprint .sprint-eyebrow{color:var(--violet);}
+.sprint.orch-sprint .sprint-eyebrow::before{background:var(--violet);}
+.sprint.obs-sprint .sprint-title{color:var(--plasma);}
+.sprint.obs-sprint .sprint-eyebrow{color:var(--plasma);}
+.sprint.obs-sprint .sprint-eyebrow::before{background:var(--plasma);}
+
+/* TEST GROUP */
+.tgroup{margin-bottom:32px;}
+.tgroup-label{
+  font-family:'DM Mono',monospace;
+  font-size:8px;letter-spacing:3px;text-transform:uppercase;
+  color:var(--fog);
+  padding:8px 16px 7px;
+  background:var(--layer1);
+  border:1px solid var(--rim);
+  border-bottom:none;
+}
+
+/* TEST ROWS */
+.tests{
+  border:1px solid var(--rim);
+  background:var(--layer1);
+}
+.test-row{
+  display:grid;
+  grid-template-columns:64px 1fr 90px;
+  border-bottom:1px solid var(--rim);
+  transition:background 0.12s;
+  cursor:pointer;
+}
+.test-row:last-child{border-bottom:none;}
+.test-row:hover{background:var(--layer2);}
+.test-row.expanded{background:var(--layer2);}
+
+.tr-id{
+  display:flex;align-items:flex-start;justify-content:center;
+  padding:14px 8px;
+  font-family:'DM Mono',monospace;font-size:9px;
+  color:var(--fog);
+  border-right:1px solid var(--rim);
+  background:var(--layer3);
+  letter-spacing:1px;
+  line-height:1.4;text-align:center;
+}
+.tr-body{padding:12px 16px;}
+.tr-name{
+  font-size:12px;font-weight:600;
+  color:var(--snow);margin-bottom:2px;
+  letter-spacing:0.2px;
+}
+.tr-brief{font-size:11px;color:var(--mist);line-height:1.55;}
+.tr-steps{
+  display:none;
+  margin-top:12px;
+  border-top:1px solid var(--rim);
+  padding-top:12px;
+  flex-direction:column;gap:5px;
+}
+.test-row.expanded .tr-steps{display:flex;}
+.step{
+  font-size:11px;padding-left:20px;position:relative;
+  font-family:'DM Mono',monospace;line-height:1.65;color:var(--mist);
+}
+.step::before{position:absolute;left:0;font-size:10px;}
+.step.do{color:var(--ice);}
+.step.do::before{content:'▶';color:var(--plasma);}
+.step.ex::before{content:'✓';color:var(--volt);}
+.step.nt::before{content:'!';color:var(--gold);}
+.step.warn::before{content:'⚠';color:var(--fire);}
+.step code{
+  background:rgba(0,229,255,0.07);
+  padding:1px 5px;
+  border:1px solid rgba(0,229,255,0.15);
+  color:var(--plasma);font-size:10px;
+}
+.step.playwright{color:var(--volt);}
+.step.playwright::before{content:'▷';color:var(--volt);}
+
+.tr-check{
+  display:flex;align-items:flex-start;justify-content:center;
+  padding:14px 10px;
+  border-left:1px solid var(--rim);
+  flex-direction:column;align-items:center;gap:6px;
+}
+.checkbox{
+  width:18px;height:18px;
+  border:1.5px solid var(--fog);
+  cursor:pointer;transition:all 0.15s;
+  position:relative;flex-shrink:0;
+  background:transparent;
+}
+.checkbox:hover{border-color:var(--plasma);}
+.checkbox.pass{background:var(--volt);border-color:var(--volt);}
+.checkbox.pass::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:#000;font-weight:700;}
+.checkbox.fail{background:var(--ruby);border-color:var(--ruby);}
+.checkbox.fail::after{content:'✗';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;font-weight:700;}
+.checkbox.skip{background:var(--gold);border-color:var(--gold);}
+.checkbox.skip::after{content:'—';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#000;font-weight:700;}
+.crit-dot{
+  width:6px;height:6px;border-radius:50%;
+  flex-shrink:0;
+}
+
+/* PRIORITY BADGES */
+.pbadge{
+  display:inline-block;
+  font-family:'DM Mono',monospace;
+  font-size:7px;letter-spacing:1px;text-transform:uppercase;
+  padding:1px 5px;border:1px solid;
+  margin-left:6px;vertical-align:middle;
+}
+.pbadge.crit{border-color:var(--ruby);color:var(--ruby);}
+.pbadge.high{border-color:var(--fire);color:var(--fire);}
+.pbadge.med{border-color:var(--gold);color:var(--gold);}
+.pbadge.e2e{border-color:var(--volt);color:var(--volt);}
+.pbadge.auto{border-color:var(--plasma);color:var(--plasma);}
+
+/* SETUP BLOCKS */
+.setup-block{
+  background:var(--layer2);
+  border:1px solid var(--rim2);
+  border-left:3px solid var(--plasma);
+  padding:18px 22px;margin-bottom:20px;
+}
+.setup-block.warn{border-left-color:var(--fire);}
+.setup-block.danger{border-left-color:var(--ruby);}
+.setup-block.volt{border-left-color:var(--volt);}
+.setup-block h4{
+  font-family:'DM Mono',monospace;
+  font-size:8px;letter-spacing:3px;text-transform:uppercase;
+  color:var(--plasma);margin-bottom:10px;
+}
+.setup-block.warn h4{color:var(--fire);}
+.setup-block.danger h4{color:var(--ruby);}
+.setup-block.volt h4{color:var(--volt);}
+.setup-block p{font-size:12px;color:var(--mist);line-height:1.75;}
+.setup-block ul{list-style:none;display:flex;flex-direction:column;gap:6px;margin-top:8px;}
+.setup-block ul li{
+  font-size:11px;color:var(--ice);padding-left:16px;
+  position:relative;font-family:'DM Mono',monospace;line-height:1.6;
+}
+.setup-block ul li::before{content:'$';position:absolute;left:0;color:var(--plasma);}
+
+/* PLAYWRIGHT FOCUS BANNER */
+.e2e-banner{
+  background:linear-gradient(135deg,rgba(118,255,3,0.08),rgba(0,229,255,0.05));
+  border:1px solid rgba(118,255,3,0.25);
+  padding:20px 24px;margin-bottom:28px;
+}
+.e2e-banner h3{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:20px;letter-spacing:3px;color:var(--volt);
+  margin-bottom:8px;
+}
+.e2e-banner p{font-size:13px;color:var(--mist);line-height:1.75;}
+
+/* PROGRESS TABLE */
+.prog-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+  gap:1px;background:var(--rim);
+  border:1px solid var(--rim);
+  margin-bottom:32px;
+}
+.prog-cell{
+  background:var(--layer1);padding:18px 14px;text-align:center;
+}
+.prog-sprint{
+  font-family:'DM Mono',monospace;
+  font-size:7px;letter-spacing:2px;text-transform:uppercase;
+  color:var(--fog);margin-bottom:6px;
+}
+.prog-count{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:36px;line-height:1;margin-bottom:3px;
+}
+.prog-lbl{
+  font-family:'DM Mono',monospace;
+  font-size:7px;letter-spacing:1px;text-transform:uppercase;color:var(--fog);
+}
+
+/* PLAYWRIGHT CODE BLOCK */
+.code-block{
+  background:var(--void);
+  border:1px solid var(--rim);
+  padding:16px 20px;
+  font-family:'DM Mono',monospace;
+  font-size:10px;color:var(--ice);
+  line-height:1.8;
+  overflow-x:auto;
+  margin:10px 0;
+}
+.code-block .cm{color:var(--fog);}
+.code-block .kw{color:var(--plasma);}
+.code-block .str{color:var(--volt);}
+.code-block .fn{color:var(--violet);}
+.code-block .num{color:var(--gold);}
+
+/* SCORE TRACKER */
+.tracker{
+  position:fixed;bottom:24px;right:24px;
+  background:var(--layer1);
+  border:1px solid var(--rim2);
+  padding:16px 20px;
+  min-width:160px;
+  z-index:300;
+}
+.tracker-title{
+  font-family:'DM Mono',monospace;
+  font-size:7px;letter-spacing:3px;text-transform:uppercase;
+  color:var(--mist);margin-bottom:10px;
+}
+.tracker-row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:4px;}
+.tracker-key{font-size:10px;color:var(--mist);font-family:'DM Mono',monospace;}
+.tracker-val{font-family:'Bebas Neue',sans-serif;font-size:20px;line-height:1;}
+.tracker-bar{height:3px;background:var(--rim);margin-top:10px;}
+.tracker-fill{height:100%;background:var(--volt);transition:width 0.4s;width:0%;}
+
+/* FOOTER */
+.footer{
+  padding:64px 72px;
+  background:var(--deep);
+  border-top:1px solid var(--rim);
+}
+.footer-verdict{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:64px;letter-spacing:5px;
+  line-height:1;margin-bottom:14px;color:var(--snow);
+}
+.footer-verdict .plasma{color:var(--plasma);}
+.footer-quote{
+  font-size:16px;color:var(--mist);
+  max-width:680px;line-height:1.85;
+  margin-bottom:48px;font-weight:300;
+}
+.footer-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:40px;}
+.fc h5{
+  font-family:'DM Mono',monospace;
+  font-size:7px;letter-spacing:3px;text-transform:uppercase;
+  color:var(--fog);margin-bottom:14px;
+}
+.fc ul{list-style:none;display:flex;flex-direction:column;gap:8px;}
+.fc ul li{
+  font-size:11px;color:var(--mist);padding-left:14px;
+  position:relative;font-family:'DM Mono',monospace;
+}
+.fc ul li::before{content:'→';position:absolute;left:0;color:var(--fog);}
+.fc ul li.v{color:var(--volt);}
+.fc ul li.v::before{content:'✓';color:var(--volt);}
+.fc ul li.p{color:var(--plasma);}
+.fc ul li.p::before{content:'◈';color:var(--plasma);}
+
+@media(max-width:900px){
+  .sidebar{display:none;}
+  .main{margin-left:0;}
+  .hero,.sprint,.footer{padding:32px 20px;}
+  .tracker{display:none;}
+  .test-row{grid-template-columns:1fr;}
+  .tr-id,.tr-check{display:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- LIVE SCORE TRACKER -->
+<div class="tracker" id="tracker">
+  <div class="tracker-title">Live Score</div>
+  <div class="tracker-row"><span class="tracker-key">PASS</span><span class="tracker-val" id="t-pass" style="color:var(--volt)">0</span></div>
+  <div class="tracker-row"><span class="tracker-key">FAIL</span><span class="tracker-val" id="t-fail" style="color:var(--ruby)">0</span></div>
+  <div class="tracker-row"><span class="tracker-key">SKIP</span><span class="tracker-val" id="t-skip" style="color:var(--gold)">0</span></div>
+  <div class="tracker-row"><span class="tracker-key">TOTAL</span><span class="tracker-val" id="t-total" style="color:var(--snow)">0</span></div>
+  <div class="tracker-bar"><div class="tracker-fill" id="t-bar"></div></div>
+</div>
+
+<nav class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-wordmark">ASTRA</div>
+    <div class="sb-tagline">Hardening Sprint Suite</div>
+    <div class="sb-cert">CERTIFICATION v1.0</div>
+  </div>
+
+  <div class="sb-section">Overview</div>
+  <a href="#setup">Setup & Environment</a>
+  <a href="#overview">Sprint Overview</a>
+
+  <div class="sb-section">Sprint Suites</div>
+  <a href="#s1"><span>S1 — Security & Auth</span><span class="sb-badge sec">20</span></a>
+  <a href="#s2"><span>S2 — UI Stability</span><span class="sb-badge ui">25</span></a>
+  <a href="#s3"><span>S3 — Ollama Reliability</span><span class="sb-badge oll">20</span></a>
+  <a href="#s4"><span>S4 — Scheduler/Orch</span><span class="sb-badge orch">25</span></a>
+  <a href="#s5"><span>S5 — Observability</span><span class="sb-badge obs">25</span></a>
+  <a href="#s6"><span>S6 — Browser E2E</span><span class="sb-badge e2e">30</span></a>
+
+  <div class="sb-section">E2E Deep Cuts</div>
+  <a href="#e2e-flows">User Flow Tests</a>
+  <a href="#e2e-chaos">Chaos Tests</a>
+  <a href="#e2e-long">Long Session Tests</a>
+  <a href="#e2e-cert">Release Certification</a>
+  <a href="#verdict">Final Verdict</a>
+</nav>
+
+<div class="main">
+
+<!-- HERO -->
+<div class="hero" id="top">
+  <div class="hero-grid-bg"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-eyebrow">Hardening Sprint Certification Matrix — Platform Stabilization</div>
+  <h1 class="hero-h1">
+    ASTRA-OS<br/>
+    <span class="plasma">FOUNDATION</span><br/>
+    <span class="volt">LOCKED.</span>
+  </h1>
+  <p class="hero-desc">Not demo tests. Not feature tests. These are platform hardening tests — resilience, synchronization, recovery, UX consistency, infrastructure integrity. Six sprints. 145 tests. Run every one. When all are green, Astra-OS has an insane foundation. The E2E suite is weighted heaviest — it's what users actually see.</p>
+  <div class="hero-kpis">
+    <div class="kpi"><div class="kpi-val" style="color:var(--volt)">145</div><div class="kpi-lbl">Total Tests</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:var(--plasma)">6</div><div class="kpi-lbl">Sprint Suites</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:var(--fire)">30</div><div class="kpi-lbl">E2E Tests</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:var(--ruby)">1</div><div class="kpi-lbl">Critical Fixed (Auth)</div></div>
+    <div class="kpi"><div class="kpi-val" style="color:var(--gold)">~5h</div><div class="kpi-lbl">Full Run Time</div></div>
+  </div>
+</div>
+
+<!-- SETUP -->
+<section class="sprint" id="setup" style="padding-top:48px;padding-bottom:40px;">
+  <div class="sprint-hdr">
+    <div class="sprint-eyebrow" style="color:var(--plasma)"><span></span>Pre-Sprint</div>
+    <div class="sprint-title" style="color:var(--plasma);font-size:40px;">ENVIRONMENT SETUP</div>
+  </div>
+
+  <div class="setup-block">
+    <h4>Start Everything</h4>
+    <ul>
+      <li>cd C:\Projects\astra-os\backend && uvicorn main:app --reload --port 8000</li>
+      <li>cd C:\Projects\astra-os\frontend && npm run dev</li>
+      <li>ollama serve  (separate terminal, verify running)</li>
+      <li>ollama list   (confirm qwen2.5:3b + nomic-embed-text present)</li>
+      <li>Open http://localhost:3000 — verify UI loads, no console errors</li>
+    </ul>
+  </div>
+
+  <div class="setup-block volt">
+    <h4>Playwright E2E Setup (Sprint 6)</h4>
+    <ul>
+      <li>cd C:\Projects\astra-os\frontend</li>
+      <li>npm install --save-dev @playwright/test</li>
+      <li>npx playwright install chromium</li>
+      <li>Create playwright.config.ts → baseURL: 'http://localhost:3000'</li>
+      <li>mkdir tests/e2e  (all E2E test files go here)</li>
+    </ul>
+  </div>
+
+  <div class="setup-block warn">
+    <h4>Auth Token (Required for API Tests)</h4>
+    <p>After auth enforcement was added, all /api/v1/ routes require a token. Store it: <code style="color:var(--plasma);font-family:'DM Mono',monospace;font-size:10px;">$TOKEN = (curl http://localhost:8000/api/v1/auth/token | jq -r '.token')</code> — use this in all curl-based test steps below.</p>
+  </div>
+
+  <div class="setup-block danger">
+    <h4>Zero Tolerance Failures</h4>
+    <p>If any test marked <span class="pbadge crit">CRIT</span> fails — STOP. Do not run the next sprint. The architecture is compromised. Fix it first. This is not optional — critical failures cascade into false positives everywhere else.</p>
+  </div>
+</section>
+
+<!-- SPRINT OVERVIEW -->
+<section class="sprint" id="overview" style="padding-top:40px;padding-bottom:40px;">
+  <div class="sprint-hdr">
+    <div class="sprint-eyebrow" style="color:var(--mist)"><span></span>Overview</div>
+    <div class="sprint-title" style="font-size:36px;color:var(--ice)">SPRINT BREAKDOWN</div>
+  </div>
+  <div class="prog-grid">
+    <div class="prog-cell"><div class="prog-sprint">Sprint 1</div><div class="prog-count" style="color:var(--ruby)">20</div><div class="prog-lbl">Security</div></div>
+    <div class="prog-cell"><div class="prog-sprint">Sprint 2</div><div class="prog-count" style="color:var(--fire)">25</div><div class="prog-lbl">UI/Layout</div></div>
+    <div class="prog-cell"><div class="prog-sprint">Sprint 3</div><div class="prog-count" style="color:var(--gold)">20</div><div class="prog-lbl">Ollama</div></div>
+    <div class="prog-cell"><div class="prog-sprint">Sprint 4</div><div class="prog-count" style="color:var(--violet)">25</div><div class="prog-lbl">Scheduler</div></div>
+    <div class="prog-cell"><div class="prog-sprint">Sprint 5</div><div class="prog-count" style="color:var(--plasma)">25</div><div class="prog-lbl">Observability</div></div>
+    <div class="prog-cell"><div class="prog-sprint">Sprint 6</div><div class="prog-count" style="color:var(--volt)">30</div><div class="prog-lbl">E2E (PRIORITY)</div></div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SPRINT 1: SECURITY -->
+<!-- ============================================================ -->
+<section class="sprint sec-sprint" id="s1">
+  <div class="sprint-hdr">
+    <div class="sprint-eyebrow">Sprint 1 — ASTRA-SEC</div>
+    <div class="sprint-title">SECURITY &<br/>AUTH HARDENING</div>
+    <div class="sprint-sub">Verify the auth middleware added in the bug fix report is airtight. Every protected route must reject unauthenticated requests. Zero exceptions.</div>
+    <div class="sprint-meta">
+      <span class="smeta">20 Tests</span>
+      <span class="smeta">~45 min</span>
+      <span class="smeta" style="color:var(--ruby);border-color:var(--ruby)">1 Critical Fixed</span>
+    </div>
+  </div>
+
+  <div class="tgroup">
+    <div class="tgroup-label">AUTH BOUNDARY — Reject unauthenticated requests</div>
+    <div class="tests">
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">SEC<br/>001</div>
+        <div class="tr-body">
+          <div class="tr-name">All protected routes return 401 without token <span class="pbadge crit">CRIT</span></div>
+          <div class="tr-brief">Core auth enforcement from T04 fix. Tests 5 routes in one sweep.</div>
+          <div class="tr-steps">
+            <div class="step do">Run WITHOUT any Authorization header:</div>
+            <div class="step do"><code>curl http://localhost:8000/api/v1/projects/</code> → expect 401</div>
+            <div class="step do"><code>curl http://localhost:8000/api/v1/agent/stats</code> → expect 401</div>
+            <div class="step do"><code>curl http://localhost:8000/api/v1/agent/settings</code> → expect 401</div>
+            <div class="step do"><code>curl http://localhost:8000/api/v1/documents/list/default</code> → expect 401</div>
+            <div class="step do"><code>curl http://localhost:8000/api/v1/scheduler/tasks</code> → expect 401</div>
+            <div class="step do"><code>curl http://localhost:8000/api/v1/watcher/directories</code> → expect 401</div>
+            <div class="step ex">Every single one returns 401 — NOT 200</div>
+            <div class="step nt">If any returns 200, auth middleware has a gap — find the route and add Depends(require_auth)</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">SEC<br/>002</div>
+        <div class="tr-body">
+          <div class="tr-name">Public routes remain accessible without token</div>
+          <div class="tr-brief">Auth must not block health checks or the token endpoint itself.</div>
+          <div class="tr-steps">
+            <div class="step do"><code>curl http://localhost:8000/</code> → 200 {"status":"online"}</div>
+            <div class="step do"><code>curl http://localhost:8000/health</code> → 200</div>
+            <div class="step do"><code>curl http://localhost:8000/api/v1/auth/token</code> → 200 with token</div>
+            <div class="step do"><code>curl http://localhost:8000/api/v1/auth/status</code> → 200</div>
+            <div class="step ex">All 4 return 200 without any token in the header</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">SEC<br/>003</div>
+        <div class="tr-body">
+          <div class="tr-name">Invalid/malformed token rejected with 401</div>
+          <div class="tr-brief">Bad tokens must not accidentally pass the middleware check.</div>
+          <div class="tr-steps">
+            <div class="step do"><code>curl -H "Authorization: Bearer FAKEFAKEFAKE" http://localhost:8000/api/v1/projects/</code> → 401</div>
+            <div class="step do"><code>curl -H "Authorization: Bearer " http://localhost:8000/api/v1/projects/</code> → 401</div>
+            <div class="step do"><code>curl -H "Authorization: notbearer abc123" http://localhost:8000/api/v1/projects/</code> → 401</div>
+            <div class="step ex">All 3 malformed cases return 401, not 200 or 500</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">SEC<br/>004</div>
+        <div class="tr-body">
+          <div class="tr-name">Valid token grants full API access</div>
+          <div class="tr-brief">Authenticated requests must pass through cleanly.</div>
+          <div class="tr-steps">
+            <div class="step do">Fetch token: <code>GET /api/v1/auth/token</code> → store as $TOKEN</div>
+            <div class="step do"><code>curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/v1/projects/</code> → 200</div>
+            <div class="step do"><code>curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/v1/agent/stats</code> → 200</div>
+            <div class="step ex">All protected routes return 200 with valid token</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">SEC<br/>005</div>
+        <div class="tr-body">
+          <div class="tr-name">SSE streams require auth <span class="pbadge crit">CRIT</span></div>
+          <div class="tr-brief">The /agent/run streaming endpoint must not be publicly accessible — it executes agent code.</div>
+          <div class="tr-steps">
+            <div class="step do">POST to <code>/api/v1/agent/run</code> with no auth header, body: {"message":"test","project_id":"default"}</div>
+            <div class="step ex">Returns 401 — stream does NOT open</div>
+            <div class="step do">Same request WITH valid Bearer token</div>
+            <div class="step ex">SSE stream opens and agent responds</div>
+            <div class="step nt">Unauthenticated SSE access is the highest-risk gap — anyone on the local network could trigger agent execution</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">SEC<br/>006</div>
+        <div class="tr-body">
+          <div class="tr-name">Auth persists across frontend page refresh</div>
+          <div class="tr-brief">The authFetch() token caching from api.ts fix must survive a page reload.</div>
+          <div class="tr-steps">
+            <div class="step do">Open http://localhost:3000. Let it load fully (token auto-fetched).</div>
+            <div class="step do">Navigate to Document Manager. Verify documents load.</div>
+            <div class="step do">Hard refresh the page (Ctrl+Shift+R)</div>
+            <div class="step ex">After reload, UI still works — no 401 errors in DevTools Network tab</div>
+            <div class="step ex">Token is re-fetched silently on the first API call after refresh</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">SEC<br/>007</div>
+        <div class="tr-body">
+          <div class="tr-name">Token reset invalidates old token</div>
+          <div class="tr-brief">/auth/reset should cycle the token so old sessions can't persist.</div>
+          <div class="tr-steps">
+            <div class="step do">Fetch token: store as OLD_TOKEN</div>
+            <div class="step do">POST <code>/api/v1/auth/reset</code> → get NEW_TOKEN</div>
+            <div class="step do">Try API call with OLD_TOKEN</div>
+            <div class="step ex">Returns 401 — old token is invalidated</div>
+            <div class="step do">Try API call with NEW_TOKEN</div>
+            <div class="step ex">Returns 200 — new token works</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="tgroup">
+    <div class="tgroup-label">PERMISSION GATES — Tool approval and sensitive ops</div>
+    <div class="tests">
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">SEC<br/>008</div>
+        <div class="tr-body">
+          <div class="tr-name">Tool approval gate cannot be bypassed via API <span class="pbadge crit">CRIT</span></div>
+          <div class="tr-brief">Attempting to approve a task that doesn't exist must return a proper error, not execute.</div>
+          <div class="tr-steps">
+            <div class="step do">POST <code>/api/v1/agent/approve/fake-task-id?approved=true</code> with valid token</div>
+            <div class="step ex">Returns 404 "task not found" — NOT 200</div>
+            <div class="step do">In Autonomous Agent, trigger a file_write task to get a real task_id from the approval modal</div>
+            <div class="step do">Deny it in the UI. Then try to approve it via API: POST /approve/{task_id}?approved=true</div>
+            <div class="step ex">Task is already resolved — returns 404 or 409 — cannot re-approve a denied task</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">SEC<br/>009</div>
+        <div class="tr-body">
+          <div class="tr-name">Workflow trigger requires auth</div>
+          <div class="tr-brief">Workflows can trigger agent execution — must be protected.</div>
+          <div class="tr-steps">
+            <div class="step do">POST <code>/api/v1/workflows/{any_id}/trigger</code> with NO auth header</div>
+            <div class="step ex">Returns 401</div>
+            <div class="step do">Same request WITH valid token</div>
+            <div class="step ex">Returns 200 and triggers correctly</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">SEC<br/>010</div>
+        <div class="tr-body">
+          <div class="tr-name">Scheduler task creation requires auth</div>
+          <div class="tr-brief">Anyone who can create a scheduled task can run arbitrary agent prompts.</div>
+          <div class="tr-steps">
+            <div class="step do">POST <code>/api/v1/scheduler/tasks</code> with no auth, body: valid task JSON</div>
+            <div class="step ex">Returns 401 — task NOT created</div>
+            <div class="step do">Verify no new task exists in DB after the unauthenticated attempt</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">SEC<br/>011</div>
+        <div class="tr-body">
+          <div class="tr-name">Watcher directory registration protected</div>
+          <div class="tr-brief">An attacker registering a watcher directory could flood the indexing pipeline.</div>
+          <div class="tr-steps">
+            <div class="step do">POST <code>/api/v1/watcher/directories</code> with no auth</div>
+            <div class="step ex">Returns 401 — directory NOT registered</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">SEC<br/>012</div>
+        <div class="tr-body">
+          <div class="tr-name">Sleep/wake endpoints protected</div>
+          <div class="tr-brief">An unauthenticated user could repeatedly sleep the model to cause denial-of-service.</div>
+          <div class="tr-steps">
+            <div class="step do">POST <code>/api/v1/agent/sleep</code> with no token → expect 401</div>
+            <div class="step do">POST <code>/api/v1/agent/wake</code> with no token → expect 401</div>
+            <div class="step ex">Both blocked without auth</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="tgroup">
+    <div class="tgroup-label">SECURITY HARDENING — Injection and abuse prevention</div>
+    <div class="tests">
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">SEC<br/>013</div>
+        <div class="tr-body">
+          <div class="tr-name">SQL injection attempts fail safely</div>
+          <div class="tr-brief">SQLModel with parameterized queries should block all injection attempts.</div>
+          <div class="tr-steps">
+            <div class="step do">GET <code>/api/v1/projects/'; DROP TABLE projectmodel; --</code> with valid token</div>
+            <div class="step ex">Returns 404 or 422 — NOT a 500 server error</div>
+            <div class="step do">Verify the projectmodel table still exists: <code>sqlite3 astra_os.db ".tables"</code></div>
+            <div class="step ex">All tables intact — no injection damage</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">SEC<br/>014</div>
+        <div class="tr-body">
+          <div class="tr-name">Path traversal blocked on document endpoints</div>
+          <div class="tr-brief">Document download/preview must not allow directory traversal.</div>
+          <div class="tr-steps">
+            <div class="step do">GET <code>/api/v1/documents/download/../../../windows/system32/cmd.exe</code></div>
+            <div class="step ex">Returns 400 or 404 — NOT serving the file</div>
+            <div class="step do">GET <code>/api/v1/documents/preview/../../../../etc/passwd</code></div>
+            <div class="step ex">Returns 400 or 404</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">SEC<br/>015</div>
+        <div class="tr-body">
+          <div class="tr-name">Dangerous file upload blocked</div>
+          <div class="tr-brief">Only allowed extensions should be indexable. .exe, .bat, .ps1 must be rejected.</div>
+          <div class="tr-steps">
+            <div class="step do">Create a test file: <code>echo "test" > malicious.exe</code></div>
+            <div class="step do">POST to <code>/api/v1/documents/upload</code> with this file</div>
+            <div class="step ex">Returns 400 "file type not allowed" — NOT indexed</div>
+            <div class="step do">Try .bat, .ps1, .sh, .jar as well</div>
+            <div class="step ex">All blocked. Only .pdf, .txt, .md, .docx, .csv, .py, .js, .xlsx pass.</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">SEC<br/>016</div>
+        <div class="tr-body">
+          <div class="tr-name">Token never appears in server logs</div>
+          <div class="tr-brief">Tokens in logs = tokens in log files = credential exposure.</div>
+          <div class="tr-steps">
+            <div class="step do">Make several authenticated API requests</div>
+            <div class="step do">Check uvicorn stdout/stderr output in the terminal</div>
+            <div class="step ex">No 64-char hex token strings appear in any log line</div>
+            <div class="step do">Check any log files written to disk</div>
+            <div class="step ex">Token values are not logged anywhere</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">SEC<br/>017</div>
+        <div class="tr-body">
+          <div class="tr-name">Python sandbox blocks all import attempts</div>
+          <div class="tr-brief">Regression test — the sandbox must still be airtight after Phase 3B additions.</div>
+          <div class="tr-steps">
+            <div class="step do">In Autonomous Agent, send: <code>run python: import os; print(os.getcwd())</code></div>
+            <div class="step ex">Blocked — does NOT print any path</div>
+            <div class="step do">Send: <code>run python: import socket; s=socket.socket(); s.connect(("8.8.8.8",80))</code></div>
+            <div class="step ex">Blocked — no network access from sandbox</div>
+            <div class="step do">Send: <code>run python: open("C:/secret.txt","w").write("pwned")</code></div>
+            <div class="step ex">Blocked by RestrictedPython — file access via open() is restricted</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">SEC<br/>018</div>
+        <div class="tr-body">
+          <div class="tr-name">PII redaction working after Phase 3B changes <span class="pbadge high">HIGH</span></div>
+          <div class="tr-brief">Regression — safety_service.py must still intercept PII in all bypass paths.</div>
+          <div class="tr-steps">
+            <div class="step do">In Main Chat: <code>my phone is 555-867-5309 and email is test@example.com</code></div>
+            <div class="step ex">Response does NOT echo back the phone number or email verbatim in a risky context</div>
+            <div class="step do">In Autonomous Agent: <code>store this SSN: 123-45-6789</code></div>
+            <div class="step ex">Agent either redacts it or declines to store raw PII</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">SEC<br/>019</div>
+        <div class="tr-body">
+          <div class="tr-name">Frontend gracefully handles unauthorized navigation</div>
+          <div class="tr-brief">If token is missing or expired, the UI should show a useful error — not crash.</div>
+          <div class="tr-steps">
+            <div class="step do">Open DevTools → Application → clear any stored tokens/cookies</div>
+            <div class="step do">Manually break the token by editing localStorage</div>
+            <div class="step do">Attempt to load Document Manager or trigger an agent task</div>
+            <div class="step ex">UI shows a sensible error state — not a blank screen or JS crash</div>
+            <div class="step ex">ErrorBoundary catches any resulting React error gracefully</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">SEC<br/>020</div>
+        <div class="tr-body">
+          <div class="tr-name">CORS only allows localhost origins</div>
+          <div class="tr-brief">The API must not be callable from random external origins.</div>
+          <div class="tr-steps">
+            <div class="step do">From a different origin (or using curl with Origin header): <code>curl -H "Origin: https://evil.com" http://localhost:8000/api/v1/projects/ -H "Authorization: Bearer $TOKEN"</code></div>
+            <div class="step ex">CORS headers in response do NOT include <code>Access-Control-Allow-Origin: https://evil.com</code></div>
+            <div class="step do">Check that <code>Access-Control-Allow-Origin</code> is limited to localhost origins only</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SPRINT 2: UI STABILITY -->
+<!-- ============================================================ -->
+<section class="sprint ui-sprint" id="s2">
+  <div class="sprint-hdr">
+    <div class="sprint-eyebrow">Sprint 2 — ASTRA-UI</div>
+    <div class="sprint-title">LAYOUT &<br/>UI STABILIZATION</div>
+    <div class="sprint-sub">The scroll bug was fixed (h-full → h-screen). Now verify it holds under all conditions — streaming, animation, rapid navigation, long content. This is what makes Astra-OS feel polished vs broken.</div>
+    <div class="sprint-meta">
+      <span class="smeta">25 Tests</span>
+      <span class="smeta">~60 min</span>
+      <span class="smeta" style="color:var(--fire);border-color:var(--fire)">T86 Fix Verified</span>
+    </div>
+  </div>
+
+  <div class="tgroup">
+    <div class="tgroup-label">VIEWPORT INTEGRITY — No overflow, no scroll gaps</div>
+    <div class="tests">
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>001</div>
+        <div class="tr-body">
+          <div class="tr-name">No page overflow on any of the 7 views <span class="pbadge crit">CRIT</span></div>
+          <div class="tr-brief">The h-screen fix. Verify it holds on every view.</div>
+          <div class="tr-steps">
+            <div class="step do">Open DevTools Console. Paste and run on EACH view:</div>
+            <div class="step do"><code>console.log(document.body.scrollHeight, window.innerHeight, document.body.scrollHeight <= window.innerHeight)</code></div>
+            <div class="step ex">Result: true for ALL 7 views — Dashboard, Autonomous Agent, Main Chat, Document Manager, Memory Browser, Execution Engine, Scheduled Agents</div>
+            <div class="step do">Also scroll each page manually — no hidden content below the viewport</div>
+            <div class="step ex">No black gap at bottom. No unexpected scrollbar.</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>002</div>
+        <div class="tr-body">
+          <div class="tr-name">Autonomous Agent view stays viewport-locked during animation</div>
+          <div class="tr-brief">The AnimatePresence scale transition was the root cause. Verify it no longer triggers overflow.</div>
+          <div class="tr-steps">
+            <div class="step do">Click on "Autonomous Agent" 10 times rapidly (from different views)</div>
+            <div class="step ex">Each time: no scroll gap appears, no black space at bottom</div>
+            <div class="step do">While on Autonomous Agent, send a message that triggers the THINKING state animation</div>
+            <div class="step ex">The agent status panel animates without causing any layout shift in the outer container</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>003</div>
+        <div class="tr-body">
+          <div class="tr-name">Sidebar remains fixed during SSE streaming</div>
+          <div class="tr-brief">Sidebar must not shift, reflow, or disappear while agent is streaming a response.</div>
+          <div class="tr-steps">
+            <div class="step do">Start a long-form agent response (e.g., "explain machine learning in 500 words")</div>
+            <div class="step do">While response is streaming, click different sidebar items</div>
+            <div class="step ex">Sidebar position never shifts. It stays fixed-left throughout.</div>
+            <div class="step do">Check that sidebar width doesn't change during streaming</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>004</div>
+        <div class="tr-body">
+          <div class="tr-name">Responsive layout stable at multiple viewport sizes</div>
+          <div class="tr-brief">Not just 1920px — verify nothing breaks at common laptop resolutions.</div>
+          <div class="tr-steps">
+            <div class="step do">Open DevTools → Device toolbar. Test each view at these widths: 1920px, 1366px, 1280px, 1024px</div>
+            <div class="step ex">At 1920px: Full layout, all panels visible</div>
+            <div class="step ex">At 1366px: Layout intact, no overflow</div>
+            <div class="step ex">At 1280px: Layout intact</div>
+            <div class="step ex">At 1024px: Sidebar may hide but content is accessible</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="tgroup">
+    <div class="tgroup-label">STREAMING UX — Chat and agent stream behavior</div>
+    <div class="tests">
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>005</div>
+        <div class="tr-body">
+          <div class="tr-name">Streaming tokens don't cause layout jumps</div>
+          <div class="tr-brief">Each token appearing must not cause the parent container to resize or shift.</div>
+          <div class="tr-steps">
+            <div class="step do">In Main Chat, ask a long question. Watch the response stream in.</div>
+            <div class="step ex">Content streams smoothly — no "jumping" where the whole page shifts on each token</div>
+            <div class="step ex">The input box stays at the bottom — doesn't move up as content grows</div>
+            <div class="step do">Check via DevTools: no layout reflows visible in the Performance tab during streaming</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>006</div>
+        <div class="tr-body">
+          <div class="tr-name">Auto-scroll is container-local (not window scroll)</div>
+          <div class="tr-brief">scrollTop on the chat container must not affect the page-level scroll position.</div>
+          <div class="tr-steps">
+            <div class="step do">Navigate to Main Chat. Scroll the page to the top.</div>
+            <div class="step do">Send a message and let the response stream in (which triggers auto-scroll)</div>
+            <div class="step ex">The page-level scroll position does NOT change — only the chat container scrolls</div>
+            <div class="step ex">After streaming, window.scrollY is still 0 (or wherever you left it)</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>007</div>
+        <div class="tr-body">
+          <div class="tr-name">Stop-generation button works mid-stream</div>
+          <div class="tr-brief">Users must be able to abort a streaming response at any point.</div>
+          <div class="tr-steps">
+            <div class="step do">Send a prompt that generates a long response</div>
+            <div class="step do">After 3-5 tokens appear, click the stop/abort button</div>
+            <div class="step ex">Streaming halts immediately. No more tokens appear.</div>
+            <div class="step ex">Input box becomes available again. No React errors in console.</div>
+            <div class="step do">Send another message — chat is still functional after the abort</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>008</div>
+        <div class="tr-body">
+          <div class="tr-name">Long messages wrap and don't overflow bubble</div>
+          <div class="tr-brief">A 2000-word response should render in a scrollable bubble, not overflow the viewport.</div>
+          <div class="tr-steps">
+            <div class="step do">Ask: <code>write me a 500-word essay about space exploration</code></div>
+            <div class="step ex">Response renders within the message bubble — no horizontal overflow</div>
+            <div class="step ex">The bubble has a scrollbar or expands vertically — it does not break the layout</div>
+            <div class="step do">Test with a code block response: <code>write a Python class with 20 methods</code></div>
+            <div class="step ex">Code block renders with proper word-wrap or horizontal scroll within the code block</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>009</div>
+        <div class="tr-body">
+          <div class="tr-name">"Waking up ASTRA..." SSE thought renders correctly</div>
+          <div class="tr-brief">The wake status message must appear and then seamlessly transition to the real response.</div>
+          <div class="tr-steps">
+            <div class="step do">POST /sleep to put model asleep</div>
+            <div class="step do">In Main Chat, send any message</div>
+            <div class="step ex">A pending assistant bubble appears IMMEDIATELY with "Waking up ASTRA..." or equivalent</div>
+            <div class="step ex">The bubble does NOT disappear — it transitions into the actual response text</div>
+            <div class="step ex">No layout jump between the wake message and the actual response</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="tgroup">
+    <div class="tgroup-label">STATE SYNCHRONIZATION — useAstraRuntime consistency</div>
+    <div class="tests">
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>010</div>
+        <div class="tr-body">
+          <div class="tr-name">Sidebar unread badge updates without page refresh</div>
+          <div class="tr-brief">The T78 fix — badge must increment automatically when background tasks complete.</div>
+          <div class="tr-steps">
+            <div class="step do">Note current badge count on "Execution Engine" in Sidebar</div>
+            <div class="step do">Trigger a manual scheduled task run (Run Now)</div>
+            <div class="step do">Wait 15-20 seconds</div>
+            <div class="step ex">Badge count increments WITHOUT a page refresh</div>
+            <div class="step do">Click "Execution Engine"</div>
+            <div class="step ex">Badge resets to 0 (markTasksViewed() called)</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>011</div>
+        <div class="tr-body">
+          <div class="tr-name">Sleep status badge is consistent across all views</div>
+          <div class="tr-brief">useAstraRuntime at page level means state is shared — verify it actually is.</div>
+          <div class="tr-steps">
+            <div class="step do">Wake the model. Check System Settings — shows "Awake"</div>
+            <div class="step do">Navigate to Dashboard, then Autonomous Agent, then back to System Settings</div>
+            <div class="step ex">System Settings still shows "Awake" — state not lost on navigation</div>
+            <div class="step do">Sleep the model from System Settings</div>
+            <div class="step do">Navigate to other views and back</div>
+            <div class="step ex">Sleep state persists — "Sleeping" badge shows correctly after navigation</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>012</div>
+        <div class="tr-body">
+          <div class="tr-name">No duplicate API polling calls from multiple components</div>
+          <div class="tr-brief">The centralized useAstraRuntime hook must fire each endpoint once per interval — not once per component.</div>
+          <div class="tr-steps">
+            <div class="step do">Open DevTools → Network tab</div>
+            <div class="step do">Navigate to a view that shows sleep status AND task count (e.g., System Settings)</div>
+            <div class="step do">Wait 60 seconds and count calls to /agent/sleep-status and /agent/task-run-count</div>
+            <div class="step ex">/sleep-status fires at most every 30 seconds — NOT every 10s or on every render</div>
+            <div class="step ex">/task-run-count fires at most every 10 seconds — one call, not multiple simultaneous</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>013</div>
+        <div class="tr-body">
+          <div class="tr-name">Dashboard stats auto-update without manual refresh</div>
+          <div class="tr-brief">Live stats polling must reflect new data within the polling interval.</div>
+          <div class="tr-steps">
+            <div class="step do">Go to Dashboard. Note document count.</div>
+            <div class="step do">In a different browser tab, upload a new document via Document Manager</div>
+            <div class="step do">Wait 30 seconds on the Dashboard tab</div>
+            <div class="step ex">Document count on Dashboard increments — without manual refresh</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="tgroup">
+    <div class="tgroup-label">ROUTING & ANIMATION — Navigation stability</div>
+    <div class="tests">
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>014</div>
+        <div class="tr-body">
+          <div class="tr-name">Rapid route switching is stable</div>
+          <div class="tr-brief">Clicking through all 7 views rapidly must not cause any React errors or state corruption.</div>
+          <div class="tr-steps">
+            <div class="step do">Click through all 7 sidebar items as fast as possible, 3 times in a row</div>
+            <div class="step ex">No blank screens. No React error overlays. No "Maximum update depth exceeded" errors in console.</div>
+            <div class="step do">Open DevTools Console during the rapid switching</div>
+            <div class="step ex">Zero errors. Zero warnings about unmounted components or state updates.</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>015</div>
+        <div class="tr-body">
+          <div class="tr-name">Framer Motion transitions never trigger viewport overflow</div>
+          <div class="tr-brief">AnimatePresence scale animations were the root cause of T86 — verify all transitions are safe.</div>
+          <div class="tr-steps">
+            <div class="step do">Navigate to Autonomous Agent (has the scale animation)</div>
+            <div class="step do">Immediately run in console: <code>setInterval(() => console.log(document.body.scrollHeight > window.innerHeight), 100)</code></div>
+            <div class="step do">Trigger the agent (send a message, watch the THINKING animation)</div>
+            <div class="step ex">Console output: always "false" — never true during animations</div>
+            <div class="step do">Clear the interval. Verify the same for MemoryBrowser and ScheduledTasks transitions.</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>016</div>
+        <div class="tr-body">
+          <div class="tr-name">ErrorBoundary catches component crashes on all views</div>
+          <div class="tr-brief">Every major view is wrapped in ErrorBoundary — verify they're all actually wrapped.</div>
+          <div class="tr-steps">
+            <div class="step do">Open page.tsx and verify ErrorBoundary wraps: Dashboard, AstraAgent, ChatInterface, DocumentManager, MemoryBrowser, BackgroundTasks, ScheduledTasks</div>
+            <div class="step ex">All 7 views are individually wrapped in ErrorBoundary</div>
+            <div class="step do">Navigate to each view and check DevTools — zero "Uncaught Error" entries</div>
+            <div class="step ex">No uncaught errors on any view during normal operation</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>017</div>
+        <div class="tr-body">
+          <div class="tr-name">No React hydration warnings in console</div>
+          <div class="tr-brief">Hydration warnings indicate server/client state mismatch which causes subtle bugs.</div>
+          <div class="tr-steps">
+            <div class="step do">Hard refresh the page (Ctrl+Shift+R)</div>
+            <div class="step do">Watch the console during the initial load</div>
+            <div class="step ex">Zero "Warning: Prop did not match" or "Warning: Expected server HTML" messages</div>
+            <div class="step ex">Zero hydration-related warnings of any kind</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>018</div>
+        <div class="tr-body">
+          <div class="tr-name">TypeScript build produces zero errors</div>
+          <div class="tr-brief">Clean build = no hidden type errors that only manifest at runtime.</div>
+          <div class="tr-steps">
+            <div class="step do"><code>cd frontend && npx tsc --noEmit 2>&1 | tail -5</code></div>
+            <div class="step ex">Output: "Found 0 errors." — nothing else</div>
+            <div class="step do"><code>npm run build 2>&1 | grep -E "error|warning" | head -20</code></div>
+            <div class="step ex">Zero TypeScript errors. Zero compilation warnings.</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>019</div>
+        <div class="tr-body">
+          <div class="tr-name">Document Manager upload progress displays correctly</div>
+          <div class="tr-brief">Upload progress feedback is critical UX — user must know the system is working.</div>
+          <div class="tr-steps">
+            <div class="step do">Go to Document Manager. Upload a PDF (larger file, >1MB recommended)</div>
+            <div class="step ex">Status shows "indexing" immediately after upload — NOT stuck on "pending"</div>
+            <div class="step ex">Status transitions to "indexed" when complete — visible without manual refresh</div>
+            <div class="step ex">chunk_count shows a number greater than 0 in the document list</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>020</div>
+        <div class="tr-body">
+          <div class="tr-name">Scheduled Agents UI displays scheduler status from new endpoint</div>
+          <div class="tr-brief">The T76 fix added GET /scheduler/status — verify the UI actually consumes it.</div>
+          <div class="tr-steps">
+            <div class="step do">Navigate to Scheduled Agents</div>
+            <div class="step ex">Page shows scheduler running state (e.g., "Scheduler Active" indicator)</div>
+            <div class="step ex">Job count is displayed and matches the number of tasks in the list</div>
+            <div class="step ex">Next fire time is displayed for at least one job</div>
+            <div class="step do">DevTools Network: verify GET /scheduler/status is being called</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>021</div>
+        <div class="tr-body">
+          <div class="tr-name">Execution Engine shows all 4 event types in filter</div>
+          <div class="tr-brief">The T57 fix added SLEEP_WAKE to audit logs — verify it appears in the filter.</div>
+          <div class="tr-steps">
+            <div class="step do">Perform a sleep and wake cycle</div>
+            <div class="step do">Navigate to Execution Engine. Open the "All Logs" filter dropdown</div>
+            <div class="step ex">Dropdown contains at minimum: "All Logs", "AGENT_TASK", "SLEEP_WAKE", and other action types</div>
+            <div class="step do">Select "SLEEP_WAKE" filter</div>
+            <div class="step ex">Only sleep/wake events are shown — other event types are hidden</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>022</div>
+        <div class="tr-body">
+          <div class="tr-name">Memory Browser "Sync Storage" button works</div>
+          <div class="tr-brief">The sync button should trigger a memory refresh without a page reload.</div>
+          <div class="tr-steps">
+            <div class="step do">Go to Memory Browser. Note episode count.</div>
+            <div class="step do">In another view, complete an agent task (creates a new episode)</div>
+            <div class="step do">Return to Memory Browser. Click "Sync Storage"</div>
+            <div class="step ex">Episode count updates to reflect the new entry — without page reload</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>023</div>
+        <div class="tr-body">
+          <div class="tr-name">System Settings save shows visual confirmation</div>
+          <div class="tr-brief">User must get feedback that their settings were saved — not just silence.</div>
+          <div class="tr-steps">
+            <div class="step do">Go to System Settings. Change any value. Click "SAVE CHANGES"</div>
+            <div class="step ex">Visual feedback appears (toast, success state on button, or status message)</div>
+            <div class="step ex">Feedback is visible for at least 2 seconds, then disappears</div>
+            <div class="step do">Refresh the page. Open System Settings again.</div>
+            <div class="step ex">Changed value is still saved — not reverted to default</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>024</div>
+        <div class="tr-body">
+          <div class="tr-name">Watched Folder Watcher section visible in System Settings</div>
+          <div class="tr-brief">The Auto-Indexing Folder Watcher UI from the screenshots must render correctly.</div>
+          <div class="tr-steps">
+            <div class="step do">Go to System Settings. Scroll to "AUTO-INDEXING FOLDER WATCHER" section</div>
+            <div class="step ex">Section is visible with Directory Path input, Target RAG Project dropdown, Extensions field, Debounce field, Watch button</div>
+            <div class="step ex">Any existing watched directories are listed below the form</div>
+            <div class="step do">Enter a valid path and click "Watch"</div>
+            <div class="step ex">New entry appears in the watched directory list with "ACTIVE" badge</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">UI<br/>025</div>
+        <div class="tr-body">
+          <div class="tr-name">Internal Telemetry panel in Autonomous Agent updates live</div>
+          <div class="tr-brief">The right-panel telemetry shows THINKING/ACTING states — must update in real time.</div>
+          <div class="tr-steps">
+            <div class="step do">Go to Autonomous Agent. Send a complex task.</div>
+            <div class="step ex">Agent Status changes: THINKING → ACTING → THINKING as tools fire</div>
+            <div class="step ex">Internal Telemetry section updates with live SSE event data</div>
+            <div class="step ex">The "[EVENT] Last broadcast mapping" line shows current state</div>
+            <div class="step do">After completion, status returns to an "idle" or "ready" state</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SPRINT 3: OLLAMA RELIABILITY -->
+<!-- ============================================================ -->
+<section class="sprint oll-sprint" id="s3">
+  <div class="sprint-hdr">
+    <div class="sprint-eyebrow">Sprint 3 — ASTRA-OLLAMA</div>
+    <div class="sprint-title">OLLAMA<br/>RELIABILITY</div>
+    <div class="sprint-sub">The 3 flaky tests from the audit (T16, T42, T50) all share one root cause: 15s HTTP timeout vs 25-45s cold model load. Fix the timeout, then verify the full model lifecycle is bulletproof.</div>
+    <div class="sprint-meta">
+      <span class="smeta">20 Tests</span>
+      <span class="smeta">~60 min</span>
+      <span class="smeta" style="color:var(--gold);border-color:var(--gold)">Flaky Tests Eliminated</span>
+    </div>
+  </div>
+
+  <div class="setup-block warn">
+    <h4>Fix First: Ollama HTTP Timeout</h4>
+    <p>Before running these tests, increase the HTTP client timeout in <code style="font-family:'DM Mono',monospace;color:var(--gold)">ollama.py</code>. The cold-start for a 2GB model takes 25-45 seconds. The current 15s timeout is too short. Set it to 60s for warmup calls, keep 30s for regular generation. This is the root cause of all 3 flaky tests. Tests OLLAMA-001, OLLAMA-006, and OLLAMA-007 will fail until this is fixed.</p>
+  </div>
+
+  <div class="tgroup">
+    <div class="tgroup-label">MODEL LIFECYCLE — Unload/load/warm cycles</div>
+    <div class="tests">
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OLL<br/>001</div>
+        <div class="tr-body">
+          <div class="tr-name">Cold model wake succeeds within 60 seconds <span class="pbadge high">HIGH</span></div>
+          <div class="tr-brief">After increasing the timeout, POST /wake must complete even on cold start.</div>
+          <div class="tr-steps">
+            <div class="step do">Ensure model is fully unloaded: POST /sleep → verify /api/ps shows no models</div>
+            <div class="step do">Wait 30 seconds (let OS reclaim VRAM)</div>
+            <div class="step do">POST /wake with a 90-second timeout: <code>curl --max-time 90 -X POST -H "Authorization: Bearer $TOKEN" http://localhost:8000/api/v1/agent/wake</code></div>
+            <div class="step ex">Returns 200 with load_time_ms populated</div>
+            <div class="step ex">load_time_ms is < 60000 (60 seconds)</div>
+            <div class="step do">Verify Ollama: <code>curl http://localhost:11434/api/ps</code> → qwen2.5:3b listed</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OLL<br/>002</div>
+        <div class="tr-body">
+          <div class="tr-name">Warm model responds under 5 seconds</div>
+          <div class="tr-brief">Once loaded, generation latency must be acceptable on 8GB RAM with qwen2.5:3b.</div>
+          <div class="tr-steps">
+            <div class="step do">Ensure model is warm (just ran a query). Start timer.</div>
+            <div class="step do">Send a simple query: <code>what is 2+2</code></div>
+            <div class="step ex">First token appears within 5 seconds</div>
+            <div class="step ex">Complete response appears within 15 seconds</div>
+            <div class="step nt">If consistently over 5s for first token on warm model, check for RAM pressure from other processes</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OLL<br/>003</div>
+        <div class="tr-body">
+          <div class="tr-name">Sleep unload is verified — model actually leaves RAM</div>
+          <div class="tr-brief">POST /sleep must result in actual RAM reduction, not just a flag change.</div>
+          <div class="tr-steps">
+            <div class="step do">Note current RAM usage: <code>GET /api/v1/agent/stats</code> → note ram_usage_percent</div>
+            <div class="step do">Ensure model is loaded. Note ram_usage_percent (should be ~60-70% on 8GB)</div>
+            <div class="step do">POST /sleep. Wait 10 seconds.</div>
+            <div class="step do">GET /agent/stats again → note new ram_usage_percent</div>
+            <div class="step ex">RAM usage decreased by at least 15-20% (2GB model unloaded)</div>
+            <div class="step ex">Ollama /api/ps shows no models</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OLL<br/>004</div>
+        <div class="tr-body">
+          <div class="tr-name">50 sleep/wake cycles are stable</div>
+          <div class="tr-brief">Repeated cycles must not cause memory leaks or degrading performance.</div>
+          <div class="tr-steps">
+            <div class="step do">Run this script: loop 10 times: POST /sleep (wait 5s) → POST /wake (wait 15s)</div>
+            <div class="step ex">All 10 sleep calls return 200 {"status":"sleeping"}</div>
+            <div class="step ex">All 10 wake calls return 200 {"status":"awake"}</div>
+            <div class="step do">After 10 cycles, send a chat message</div>
+            <div class="step ex">Agent responds normally — no performance degradation</div>
+            <div class="step nt">10 cycles is enough to detect memory leaks. 50 cycles for production certification.</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OLL<br/>005</div>
+        <div class="tr-body">
+          <div class="tr-name">Embedding model auto-loads for RAG queries</div>
+          <div class="tr-brief">nomic-embed-text must load on demand without timing out (was the T16/T42 root cause).</div>
+          <div class="tr-steps">
+            <div class="step do">Ensure nomic-embed-text is cold (unloaded)</div>
+            <div class="step do">Upload a document and ask a question that requires RAG retrieval</div>
+            <div class="step ex">RAG retrieval succeeds — nomic-embed-text loaded and ran without timeout error</div>
+            <div class="step do">Check backend logs — no "timeout" or "connection error" for embedding calls</div>
+            <div class="step nt">This test only passes after fixing the 15s→60s timeout for embedding calls</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="tgroup">
+    <div class="tgroup-label">RESILIENCE — Offline recovery and concurrent access</div>
+    <div class="tests">
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OLL<br/>006</div>
+        <div class="tr-body">
+          <div class="tr-name">Backend survives Ollama being offline</div>
+          <div class="tr-brief">If Ollama is stopped, the backend must not crash — it must return a clean error.</div>
+          <div class="tr-steps">
+            <div class="step do">Stop Ollama (kill the process or stop the service)</div>
+            <div class="step do">GET <code>/api/v1/agent/health</code></div>
+            <div class="step ex">Returns 200 but with Ollama status showing "offline" or "unavailable" — NOT a 500 server error</div>
+            <div class="step do">Send a chat message</div>
+            <div class="step ex">Frontend shows a clear "Ollama unavailable" error — not a blank response or frozen UI</div>
+            <div class="step do">Restart Ollama. Send another message.</div>
+            <div class="step ex">Agent recovers automatically — no backend restart needed</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OLL<br/>007</div>
+        <div class="tr-body">
+          <div class="tr-name">Failed embedding does not corrupt memory pipeline</div>
+          <div class="tr-brief">If embedding fails mid-indexing, the document table must not be left in a broken state.</div>
+          <div class="tr-steps">
+            <div class="step do">Start a document upload while Ollama embedding is cold/slow</div>
+            <div class="step do">If embedding times out, check SQLite: <code>SELECT status FROM documents WHERE status != 'indexed'</code></div>
+            <div class="step ex">Failed documents show status="failed" — NOT "indexing" forever (zombie status)</div>
+            <div class="step do">ChromaDB should not have partial/corrupted chunks from the failed indexing</div>
+            <div class="step ex">Re-uploading the same document works correctly after the failure</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OLL<br/>008</div>
+        <div class="tr-body">
+          <div class="tr-name">Concurrent requests during model wake are safe</div>
+          <div class="tr-brief">Two users (or two tabs) sending messages simultaneously during a wake must not deadlock.</div>
+          <div class="tr-steps">
+            <div class="step do">PUT model to sleep</div>
+            <div class="step do">Open two browser tabs to localhost:3000</div>
+            <div class="step do">Send a message from BOTH tabs simultaneously</div>
+            <div class="step ex">Both receive "Waking up ASTRA..." then eventually get their responses</div>
+            <div class="step ex">Neither tab freezes or times out</div>
+            <div class="step ex">Model is loaded only ONCE (not twice) — check Ollama /api/ps</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OLL<br/>009</div>
+        <div class="tr-body">
+          <div class="tr-name">_model_loaded flag syncs correctly after unexpected Ollama restart</div>
+          <div class="tr-brief">If Ollama restarts externally, the flag will be stale. Verify recovery logic kicks in.</div>
+          <div class="tr-steps">
+            <div class="step do">Ensure model is loaded and _model_loaded flag is True</div>
+            <div class="step do">Restart Ollama externally (model unloads from RAM)</div>
+            <div class="step do">Send a chat message (backend thinks model is loaded)</div>
+            <div class="step ex">Generation fails → backend detects the error → calls is_model_loaded() to re-sync flag</div>
+            <div class="step ex">On next message, shows "Waking up ASTRA..." and correctly reloads the model</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OLL<br/>010</div>
+        <div class="tr-body">
+          <div class="tr-name">Large prompt generation completes without timeout</div>
+          <div class="tr-brief">A prompt that generates 1000+ tokens must complete on 8GB RAM.</div>
+          <div class="tr-steps">
+            <div class="step do">Send: <code>write a detailed 800-word technical explanation of how transformers work, including attention mechanisms, positional encoding, and training</code></div>
+            <div class="step ex">Response completes fully — not truncated</div>
+            <div class="step ex">No timeout error. Full response rendered in the UI.</div>
+            <div class="step do">Check backend logs for any "timeout" or "connection reset" errors</div>
+            <div class="step ex">Zero timeout errors in logs</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OLL<br/>011</div>
+        <div class="tr-body">
+          <div class="tr-name">No orphaned Ollama processes after repeated operations</div>
+          <div class="tr-brief">Each sleep/wake cycle must not leak an Ollama subprocess.</div>
+          <div class="tr-steps">
+            <div class="step do">Run 5 sleep/wake cycles</div>
+            <div class="step do">Check Task Manager (Windows) or: <code>tasklist | findstr ollama</code></div>
+            <div class="step ex">Only ONE ollama.exe process — no orphaned duplicates</div>
+            <div class="step do">Run 5 more cycles. Check again.</div>
+            <div class="step ex">Still only ONE process — no accumulation</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OLL<br/>012</div>
+        <div class="tr-body">
+          <div class="tr-name">Memory store/recall bypass works after fixing embedding timeout</div>
+          <div class="tr-brief">T16 was flaky due to the timeout. After the fix, verify it's now stable.</div>
+          <div class="tr-steps">
+            <div class="step do">Send: <code>remember that the project codename is AURORA</code></div>
+            <div class="step ex">Confirmation within 15 seconds — no timeout</div>
+            <div class="step do">Start a NEW chat session. Send: <code>what is the project codename?</code></div>
+            <div class="step ex">Returns "AURORA" from memory — recall works</div>
+            <div class="step do">Run this test 3 times in a row</div>
+            <div class="step ex">All 3 passes succeed — T16 is no longer flaky</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OLL<br/>013</div>
+        <div class="tr-body">
+          <div class="tr-name">Wake during active scheduled agent job is safe</div>
+          <div class="tr-brief">If scheduler fires while model is sleeping, the dispatch must handle the wake gracefully.</div>
+          <div class="tr-steps">
+            <div class="step do">Create a scheduled task with */1 cron. Let it fire once to confirm it works.</div>
+            <div class="step do">POST /sleep to put model to sleep</div>
+            <div class="step do">Wait for the next cron fire</div>
+            <div class="step ex">Scheduled agent execution handles the sleeping model: either wakes it, shows an appropriate error, or retries</div>
+            <div class="step ex">Background_task_runs entry is either "completed" or "failed" — NOT stuck on "running" forever</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="tgroup">
+    <div class="tgroup-label">PERFORMANCE — Memory, CPU, stability metrics</div>
+    <div class="tests">
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OLL<br/>014</div>
+        <div class="tr-body">
+          <div class="tr-name">RAM usage stays below 85% during normal operation</div>
+          <div class="tr-brief">On 8GB RAM, model (2.5GB) + OS + backend must stay under the OOM threshold.</div>
+          <div class="tr-steps">
+            <div class="step do">Run 10 consecutive chat queries</div>
+            <div class="step do">After each, check GET /agent/stats → ram_usage_percent</div>
+            <div class="step ex">ram_usage_percent stays below 85% throughout</div>
+            <div class="step nt">If RAM hits 90%+, the system is approaching OOM conditions. Enable sleep mode with 5-minute idle timeout as mitigation.</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OLL<br/>015</div>
+        <div class="tr-body">
+          <div class="tr-name">Multi-session concurrency (two chat windows) is stable</div>
+          <div class="tr-brief">Two active chat sessions must not corrupt each other's context or memory.</div>
+          <div class="tr-steps">
+            <div class="step do">Open Main Chat in Tab 1 and Autonomous Agent in Tab 2</div>
+            <div class="step do">Send messages simultaneously from both tabs</div>
+            <div class="step ex">Both receive correct, independent responses</div>
+            <div class="step ex">Chat history in Tab 1 does NOT contain messages from Tab 2</div>
+            <div class="step ex">No 500 errors. No deadlock on the backend.</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SPRINT 4: SCHEDULER/ORCHESTRATION -->
+<!-- ============================================================ -->
+<section class="sprint orch-sprint" id="s4">
+  <div class="sprint-hdr">
+    <div class="sprint-eyebrow">Sprint 4 — ASTRA-ORCH</div>
+    <div class="sprint-title">SCHEDULER &<br/>ORCHESTRATION</div>
+    <div class="sprint-sub">The workflow cron bridge was fixed (T75). The scheduler status endpoint was added (T76). Now verify the entire orchestration system is production-grade — recovery, isolation, duplicate prevention, and live UI sync.</div>
+    <div class="sprint-meta">
+      <span class="smeta">25 Tests</span>
+      <span class="smeta">~75 min</span>
+      <span class="smeta" style="color:var(--violet);border-color:var(--violet)">T75 + T76 Fixes Verified</span>
+    </div>
+  </div>
+
+  <div class="tgroup">
+    <div class="tgroup-label">BRIDGE TESTS — Workflow → APScheduler integration</div>
+    <div class="tests">
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">ORC<br/>001</div>
+        <div class="tr-body">
+          <div class="tr-name">Scheduled workflow auto-registers APScheduler job <span class="pbadge high">HIGH</span></div>
+          <div class="tr-brief">T75 fix verification. The bridge must actually work end-to-end.</div>
+          <div class="tr-steps">
+            <div class="step do">Get current job count: GET /scheduler/status → note job_count</div>
+            <div class="step do">Create a workflow via Execution Engine with trigger_type="scheduled" and a valid cron in trigger_config</div>
+            <div class="step do">GET /scheduler/status again</div>
+            <div class="step ex">job_count increased by exactly 1</div>
+            <div class="step do">List APScheduler jobs: GET /scheduler/tasks — find the bridged job (prefixed "wf_")</div>
+            <div class="step ex">Job exists with the workflow's cron expression</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">ORC<br/>002</div>
+        <div class="tr-body">
+          <div class="tr-name">Workflow deletion removes the scheduler job</div>
+          <div class="tr-brief">No orphaned scheduler jobs after workflow deletion.</div>
+          <div class="tr-steps">
+            <div class="step do">Create a scheduled workflow (from ORC-001)</div>
+            <div class="step do">Note the job_count: N</div>
+            <div class="step do">Delete the workflow</div>
+            <div class="step do">GET /scheduler/status → job_count should be N-1</div>
+            <div class="step ex">Job count decreased. The "wf_" prefixed job is gone from /scheduler/tasks</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">ORC<br/>003</div>
+        <div class="tr-body">
+          <div class="tr-name">Scheduler reloads all jobs after backend restart</div>
+          <div class="tr-brief">Scheduler state must survive a restart — critical for production reliability.</div>
+          <div class="tr-steps">
+            <div class="step do">Create 2 scheduled tasks and 1 scheduled workflow</div>
+            <div class="step do">GET /scheduler/status → note job_count (should be at least 3)</div>
+            <div class="step do">Restart the backend</div>
+            <div class="step do">GET /scheduler/status again after startup</div>
+            <div class="step ex">job_count matches pre-restart count — all jobs reloaded from DB</div>
+            <div class="step ex">No startup errors related to scheduler or cron parsing in logs</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">ORC<br/>004</div>
+        <div class="tr-body">
+          <div class="tr-name">Duplicate job prevention</div>
+          <div class="tr-brief">Creating the same scheduled task twice must update the job, not create a duplicate.</div>
+          <div class="tr-steps">
+            <div class="step do">Create a scheduled task with ID "test-dedup"</div>
+            <div class="step do">Create another task with the same ID (or update existing)</div>
+            <div class="step do">GET /scheduler/tasks</div>
+            <div class="step ex">Only ONE job for that ID — not two duplicates</div>
+            <div class="step do">GET /scheduler/status → job_count is not double-counting</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="tgroup">
+    <div class="tgroup-label">EXECUTION INTEGRITY — Isolation, timeouts, session separation</div>
+    <div class="tests">
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">ORC<br/>005</div>
+        <div class="tr-body">
+          <div class="tr-name">Concurrent scheduled workflows don't block each other</div>
+          <div class="tr-brief">Dispatcher pattern must ensure parallel execution — not serial blocking.</div>
+          <div class="tr-steps">
+            <div class="step do">Create 3 scheduled tasks all with */1 cron (every minute)</div>
+            <div class="step do">Wait for them to all fire within the same minute</div>
+            <div class="step do">Check background_task_runs for overlapping execution windows</div>
+            <div class="step ex">All 3 started_at timestamps are within 5 seconds of each other — they ran concurrently</div>
+            <div class="step ex">No task waited for another to complete before starting</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">ORC<br/>006</div>
+        <div class="tr-body">
+          <div class="tr-name">Failed workflow does not kill the scheduler</div>
+          <div class="tr-brief">One bad job must not take down the whole APScheduler instance.</div>
+          <div class="tr-steps">
+            <div class="step do">Create a task with an agent_prompt designed to fail (e.g., a Python execution that raises an exception)</div>
+            <div class="step do">Trigger it: POST /scheduler/tasks/{id}/trigger</div>
+            <div class="step ex">The task fails gracefully — background_task_runs shows status="failed"</div>
+            <div class="step do">GET /scheduler/status</div>
+            <div class="step ex">running=true — scheduler is still operational</div>
+            <div class="step do">Trigger another (working) task</div>
+            <div class="step ex">It executes successfully — failure didn't contaminate the scheduler</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">ORC<br/>007</div>
+        <div class="tr-body">
+          <div class="tr-name">Every execution has a unique session_id in episodic memory</div>
+          <div class="tr-brief">Memory must not bleed between scheduled runs.</div>
+          <div class="tr-steps">
+            <div class="step do">Trigger the same task 3 times manually (Run Now, wait 15s between each)</div>
+            <div class="step do"><code>sqlite3 astra_os.db "SELECT metadata FROM background_task_runs WHERE task_type='scheduled_agent' ORDER BY id DESC LIMIT 3;"</code></div>
+            <div class="step ex">Each metadata JSON has a different session_id UUID — all 3 are unique</div>
+            <div class="step do"><code>sqlite3 astra_os.db "SELECT DISTINCT session_id FROM episodic_memory ORDER BY id DESC LIMIT 10;"</code></div>
+            <div class="step ex">Multiple unique session_ids — scheduled runs are isolated in memory</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">ORC<br/>008</div>
+        <div class="tr-body">
+          <div class="tr-name">30-minute timeout kills hung executions</div>
+          <div class="tr-brief">asyncio.wait_for(timeout=1800) must actually fire on a deliberately slow task.</div>
+          <div class="tr-steps">
+            <div class="step do">This test is simulation-only: verify the code path in scheduler_service.py</div>
+            <div class="step do">Open scheduler_service.py → find _execute_with_timeout</div>
+            <div class="step ex"><code>asyncio.wait_for(..., timeout=1800)</code> is present</div>
+            <div class="step do">Verify the TimeoutError catch writes to background_task_runs as "failed"</div>
+            <div class="step ex">Code path: TimeoutError → fail_task_run(task_run_id, "Execution timed out (30 min limit)")</div>
+            <div class="step nt">Full 30-min test impractical in normal testing. Code inspection is sufficient.</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">ORC<br/>009</div>
+        <div class="tr-body">
+          <div class="tr-name">Backend restart during active execution recovers cleanly</div>
+          <div class="tr-brief">Zombie recovery must mark running tasks as failed on startup.</div>
+          <div class="tr-steps">
+            <div class="step do">Trigger a scheduled task that takes >10 seconds to complete</div>
+            <div class="step do">While it's running (status="running"), restart the backend</div>
+            <div class="step do">After restart, query: <code>SELECT status,error FROM background_task_runs WHERE status='failed' ORDER BY id DESC LIMIT 3</code></div>
+            <div class="step ex">The interrupted task shows status="failed" and error contains "Server restarted"</div>
+            <div class="step ex">No task is stuck in status="running" after the restart</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">ORC<br/>010</div>
+        <div class="tr-body">
+          <div class="tr-name">Malformed cron expression returns 400 with clear message</div>
+          <div class="tr-brief">Bad cron must fail at creation time, not at execution time.</div>
+          <div class="tr-steps">
+            <div class="step do">POST /scheduler/tasks with cron_expression: "not-a-cron"</div>
+            <div class="step ex">Returns 400 with a message that says the cron expression is invalid</div>
+            <div class="step do">POST with "99 99 99 99 99"</div>
+            <div class="step ex">Returns 400 — invalid range values caught by APScheduler's CronTrigger parser</div>
+            <div class="step do">GET /scheduler/status — backend is still running</div>
+            <div class="step ex">running=true — bad input didn't crash the scheduler</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="tgroup">
+    <div class="tgroup-label">OBSERVABILITY + UI — Scheduler status visible to the user</div>
+    <div class="tests">
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">ORC<br/>011</div>
+        <div class="tr-body">
+          <div class="tr-name">GET /scheduler/status returns accurate live data</div>
+          <div class="tr-brief">T76 fix — the endpoint must return real APScheduler state, not static data.</div>
+          <div class="tr-steps">
+            <div class="step do">GET /scheduler/status while 2 tasks are active</div>
+            <div class="step ex">job_count = 2 (or more if workflow bridge jobs exist)</div>
+            <div class="step ex">running = true</div>
+            <div class="step ex">next_fire_time is a valid ISO datetime string — not null if any job is scheduled</div>
+            <div class="step do">Disable one task. GET /scheduler/status again.</div>
+            <div class="step ex">job_count decreased by 1 (or paused job not counted — depends on implementation)</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">ORC<br/>012</div>
+        <div class="tr-body">
+          <div class="tr-name">Execution logs in Execution Engine are linked to scheduler task IDs</div>
+          <div class="tr-brief">Users must be able to trace a background_task_run back to which scheduled task triggered it.</div>
+          <div class="tr-steps">
+            <div class="step do">Trigger a scheduled task</div>
+            <div class="step do">Go to Execution Engine → find the new entry</div>
+            <div class="step ex">The log entry references the task name or task_id</div>
+            <div class="step do"><code>SELECT task_name, metadata FROM background_task_runs WHERE task_type='scheduled_agent' ORDER BY id DESC LIMIT 1</code></div>
+            <div class="step ex">metadata contains task_id and session_id — traceable</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">ORC<br/>013</div>
+        <div class="tr-body">
+          <div class="tr-name">ScheduledTasks UI shows correct next_fire_time</div>
+          <div class="tr-brief">The displayed next run time must match what APScheduler has scheduled.</div>
+          <div class="tr-steps">
+            <div class="step do">Create a task with cron "0 9 * * 1-5" (9am weekdays)</div>
+            <div class="step do">View the task in Scheduled Agents UI</div>
+            <div class="step ex">Next run time shows the next upcoming 9am weekday</div>
+            <div class="step do">Create a task with */2 cron. Verify next_fire_time is within the next 2 minutes.</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SPRINT 5: OBSERVABILITY -->
+<!-- ============================================================ -->
+<section class="sprint obs-sprint" id="s5">
+  <div class="sprint-hdr">
+    <div class="sprint-eyebrow">Sprint 5 — ASTRA-OBS</div>
+    <div class="sprint-title">UNIFIED<br/>OBSERVABILITY</div>
+    <div class="sprint-sub">Every system in Astra-OS (sleep, watcher, scheduler, workflows, approvals) must emit events to a single visible stream. Users and developers must be able to see what happened, when, and why — from one place.</div>
+    <div class="sprint-meta">
+      <span class="smeta">25 Tests</span>
+      <span class="smeta">~60 min</span>
+      <span class="smeta" style="color:var(--plasma);border-color:var(--plasma)">T57 Fix Verified</span>
+    </div>
+  </div>
+
+  <div class="tgroup">
+    <div class="tgroup-label">EVENT PIPELINE — All systems emit to unified log</div>
+    <div class="tests">
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OBS<br/>001</div>
+        <div class="tr-body">
+          <div class="tr-name">All 5 event types appear in Execution Engine</div>
+          <div class="tr-brief">AGENT_TASK, SLEEP_WAKE, FILE_WATCH, SCHEDULED_AGENT, WORKFLOW — all must be visible.</div>
+          <div class="tr-steps">
+            <div class="step do">Trigger one of each event type: run an agent task, sleep/wake, add a file to watcher, run a scheduled task, trigger a workflow</div>
+            <div class="step do">Go to Execution Engine. Open the filter dropdown.</div>
+            <div class="step ex">Filter dropdown contains entries for all 5 event types (at minimum)</div>
+            <div class="step do">Select each filter one at a time</div>
+            <div class="step ex">Each filter shows only the relevant events — cross-type filtering works</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OBS<br/>002</div>
+        <div class="tr-body">
+          <div class="tr-name">Events have consistent schema (timestamp, type, status, duration)</div>
+          <div class="tr-brief">All events written by task_logger must have the same field structure.</div>
+          <div class="tr-steps">
+            <div class="step do"><code>sqlite3 astra_os.db "SELECT task_type, status, started_at, duration_ms FROM background_task_runs ORDER BY id DESC LIMIT 10;"</code></div>
+            <div class="step ex">All 10 rows have: task_type (non-null), status (completed/failed), started_at (datetime string), duration_ms (integer, non-null)</div>
+            <div class="step ex">No NULL values in critical fields</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OBS<br/>003</div>
+        <div class="tr-body">
+          <div class="tr-name">Live Polling in Execution Engine shows new events in real time</div>
+          <div class="tr-brief">With Live Polling on, new events must appear without manual refresh.</div>
+          <div class="tr-steps">
+            <div class="step do">Go to Execution Engine. Enable "Live Polling" toggle. Note current entry count.</div>
+            <div class="step do">In another tab, trigger an agent task</div>
+            <div class="step do">Watch Execution Engine for 30 seconds</div>
+            <div class="step ex">New entry appears automatically — without clicking Refresh</div>
+            <div class="step do">Toggle Live Polling OFF. Trigger another task.</div>
+            <div class="step ex">Entry does NOT appear automatically — manual Refresh needed</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OBS<br/>004</div>
+        <div class="tr-body">
+          <div class="tr-name">No duplicate events for the same operation</div>
+          <div class="tr-brief">A single sleep call must create exactly one entry — not two or three.</div>
+          <div class="tr-steps">
+            <div class="step do">POST /sleep once</div>
+            <div class="step do"><code>SELECT COUNT(*) FROM background_task_runs WHERE task_name='Model sleep' AND started_at > datetime('now', '-1 minute')</code></div>
+            <div class="step ex">Count = 1 — exactly one sleep event</div>
+            <div class="step do">Also check audit log: <code>SELECT COUNT(*) FROM auditlogmodel WHERE action_type='SLEEP_WAKE' AND timestamp > datetime('now', '-1 minute')</code></div>
+            <div class="step ex">Count = 1 — one audit entry, one background_task_run = no duplication</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OBS<br/>005</div>
+        <div class="tr-body">
+          <div class="tr-name">Event ordering is chronologically correct</div>
+          <div class="tr-brief">Execution Engine must show latest events first, and timestamps must be accurate.</div>
+          <div class="tr-steps">
+            <div class="step do">Trigger 3 events, 5 seconds apart</div>
+            <div class="step do">Go to Execution Engine</div>
+            <div class="step ex">Events are ordered newest-first (most recent at top)</div>
+            <div class="step ex">Timestamps increase from bottom to top — no out-of-order entries</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OBS<br/>006</div>
+        <div class="tr-body">
+          <div class="tr-name">Notification badge count is accurate</div>
+          <div class="tr-brief">The badge must reflect exactly the number of unread completed background tasks.</div>
+          <div class="tr-steps">
+            <div class="step do">Click Execution Engine to mark all as viewed (badge = 0)</div>
+            <div class="step do">Trigger exactly 3 background tasks (sleep, file watch, scheduled agent)</div>
+            <div class="step do">Wait for all 3 to complete</div>
+            <div class="step ex">Sidebar badge shows exactly "3"</div>
+            <div class="step do">Click Execution Engine</div>
+            <div class="step ex">Badge resets to 0</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OBS<br/>007</div>
+        <div class="tr-body">
+          <div class="tr-name">Approval events are visible in Execution Engine</div>
+          <div class="tr-brief">File writes and other RISKY tool approvals should appear in the audit trail.</div>
+          <div class="tr-steps">
+            <div class="step do">In Autonomous Agent, trigger a file write (needs approval). Approve it.</div>
+            <div class="step do">Go to Execution Engine</div>
+            <div class="step ex">An entry for the approved action appears in the log</div>
+            <div class="step do">Trigger another file write and DENY it</div>
+            <div class="step ex">A denied entry also appears — both approvals and denials are logged</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OBS<br/>008</div>
+        <div class="tr-body">
+          <div class="tr-name">Memory Browser statistics are accurate</div>
+          <div class="tr-brief">Episode count, task success rate, and most-used tool must reflect real data.</div>
+          <div class="tr-steps">
+            <div class="step do">Go to Memory Browser. Note: Total Persistent Episodes, Task Success Rate, Most Utilized Tool</div>
+            <div class="step do">Complete 2 successful agent tasks and 1 failed one (trigger a file write and deny it)</div>
+            <div class="step do">Refresh Memory Browser (Sync Storage)</div>
+            <div class="step ex">Episode count increased by the number of new runs</div>
+            <div class="step ex">Most Utilized Tool reflects the actual most-called tool from recent sessions</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OBS<br/>009</div>
+        <div class="tr-body">
+          <div class="tr-name">task_logger duration_ms is accurate</div>
+          <div class="tr-brief">duration_ms must reflect real execution time — not always 0 or null.</div>
+          <div class="tr-steps">
+            <div class="step do">Trigger a scheduled task that takes a few seconds (e.g., web search)</div>
+            <div class="step do"><code>SELECT task_name, duration_ms FROM background_task_runs WHERE task_type='scheduled_agent' ORDER BY id DESC LIMIT 3</code></div>
+            <div class="step ex">duration_ms is non-zero and non-null — reflects real execution time</div>
+            <div class="step ex">For a simple math query: duration_ms should be < 5000ms. For a web search: < 30000ms.</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">OBS<br/>010</div>
+        <div class="tr-body">
+          <div class="tr-name">Execution Engine search filter works</div>
+          <div class="tr-brief">Users must be able to search audit details to find specific events.</div>
+          <div class="tr-steps">
+            <div class="step do">Go to Execution Engine. In the search box, type a known task name (e.g., "Write")</div>
+            <div class="step ex">Only entries containing "Write" in their description are shown</div>
+            <div class="step do">Clear the search</div>
+            <div class="step ex">All entries return</div>
+            <div class="step do">Search for a timestamp fragment</div>
+            <div class="step ex">Matches events from that time</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<!-- SPRINT 6: BROWSER E2E — THE CENTERPIECE -->
+<!-- ============================================================ -->
+<section class="sprint e2e-sprint" id="s6">
+  <div class="sprint-hdr">
+    <div class="sprint-eyebrow">Sprint 6 — ASTRA-E2E</div>
+    <div class="sprint-title">BROWSER<br/>END-TO-END</div>
+    <div class="sprint-sub">This is the most important sprint. Users don't see endpoints or SQLite schemas — they see these flows. Every test here simulates real user behavior in a real browser. Most can and should be automated with Playwright. Zero failures acceptable for release.</div>
+    <div class="sprint-meta">
+      <span class="smeta">30 Tests</span>
+      <span class="smeta">~90 min</span>
+      <span class="smeta" style="color:var(--volt);border-color:var(--volt)">HIGHEST PRIORITY</span>
+      <span class="smeta" style="color:var(--plasma);border-color:var(--plasma)">Playwright Recommended</span>
+    </div>
+  </div>
+
+  <div class="e2e-banner">
+    <h3>PLAYWRIGHT AUTOMATION GUIDE</h3>
+    <p>Every test in Sprint 6 can be automated. The step format uses <code style="color:var(--volt);font-family:'DM Mono',monospace">▷ playwright</code> annotations showing exact Playwright commands. Run them with <code style="color:var(--volt);font-family:'DM Mono',monospace">npx playwright test tests/e2e/</code> after writing the test files. Manual testing is acceptable for the chaos and long-session tests — those are hard to automate reliably.</p>
+  </div>
+
+  <div class="tgroup" id="e2e-flows">
+    <div class="tgroup-label">USER FLOW TESTS — Complete scenarios a real user would run</div>
+    <div class="tests">
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>001</div>
+        <div class="tr-body">
+          <div class="tr-name">Complete onboarding → first chat flow <span class="pbadge e2e">E2E</span></div>
+          <div class="tr-brief">First-time user opens the app, sees a working interface, sends a message, gets a response.</div>
+          <div class="tr-steps">
+            <div class="step playwright">const { chromium } = require('@playwright/test');</div>
+            <div class="step playwright">const browser = await chromium.launch(); const page = await browser.newPage();</div>
+            <div class="step do">Navigate to http://localhost:3000</div>
+            <div class="step ex">Page title contains "ASTRA OS"</div>
+            <div class="step ex">Sidebar is visible with all 7 navigation items</div>
+            <div class="step ex">No console errors on load</div>
+            <div class="step playwright">await page.click('text=Main Chat');</div>
+            <div class="step do">Click "Main Chat" in sidebar</div>
+            <div class="step ex">ChatInterface loads — "NEURAL INTERFACE V2.0" header visible</div>
+            <div class="step playwright">await page.fill('[placeholder="Message Astra Assistant..."]', 'hello, what can you do?');</div>
+            <div class="step playwright">await page.click('button[type="submit"]') // or send button</div>
+            <div class="step ex">Response appears within 30 seconds — not a blank or error state</div>
+            <div class="step ex">Response contains helpful information about Astra's capabilities</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>002</div>
+        <div class="tr-body">
+          <div class="tr-name">Upload → RAG → Query complete flow <span class="pbadge e2e">E2E</span></div>
+          <div class="tr-brief">The core knowledge base workflow: upload a document, ask about it, get a grounded answer.</div>
+          <div class="tr-steps">
+            <div class="step do">Create a test file: <code>echo "The Astra-OS codename is HELIOS and was launched in 2026." > test_rag.txt</code></div>
+            <div class="step playwright">await page.click('text=Document Manager');</div>
+            <div class="step do">Go to Document Manager</div>
+            <div class="step playwright">await page.setInputFiles('input[type="file"]', 'test_rag.txt');</div>
+            <div class="step do">Upload test_rag.txt via the dropzone</div>
+            <div class="step ex">File appears in Document Inventory with status "indexing"</div>
+            <div class="step playwright">await page.waitForSelector('text=indexed', {timeout: 30000});</div>
+            <div class="step ex">Status changes to "indexed" within 30 seconds</div>
+            <div class="step do">Go to Main Chat. Ask: <code>what is the Astra-OS codename?</code></div>
+            <div class="step ex">Agent responds with "HELIOS" — retrieved from the uploaded document, not hallucinated</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>003</div>
+        <div class="tr-body">
+          <div class="tr-name">Autonomous Agent → Tool Use → Approval → Result flow <span class="pbadge e2e">E2E</span></div>
+          <div class="tr-brief">The full agentic loop: intent → planning → tool call → human approval → execution → result.</div>
+          <div class="tr-steps">
+            <div class="step playwright">await page.click('text=Autonomous Agent');</div>
+            <div class="step do">Go to Autonomous Agent. Send: <code>write "ASTRA test passed" to a file named astra_test_result.txt</code></div>
+            <div class="step ex">Agent status changes to THINKING, then ACTING</div>
+            <div class="step ex">Approval modal appears — not auto-executing</div>
+            <div class="step playwright">await page.waitForSelector('text=Confirm', {timeout: 15000}); await page.click('text=Confirm');</div>
+            <div class="step do">Click "Confirm & Execute" (or equivalent approve button)</div>
+            <div class="step ex">Agent completes the task. Reports success in the chat.</div>
+            <div class="step do">Verify the file was actually written: <code>type astra_test_result.txt</code></div>
+            <div class="step ex">File contains "ASTRA test passed" — real execution, not a simulation</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>004</div>
+        <div class="tr-body">
+          <div class="tr-name">Memory Browser → Episode Recall → Cross-session Memory flow <span class="pbadge e2e">E2E</span></div>
+          <div class="tr-brief">Memory must persist across sessions and be queryable by new sessions.</div>
+          <div class="tr-steps">
+            <div class="step do">In Autonomous Agent: <code>remember that the project lead is Alex and the deadline is Q4 2026</code></div>
+            <div class="step ex">Agent confirms storage. An episode appears in Memory Browser.</div>
+            <div class="step playwright">await page.click('text=Memory Browser');</div>
+            <div class="step do">Go to Memory Browser</div>
+            <div class="step ex">New episode visible with the stored information</div>
+            <div class="step do">Search for "Alex" in Memory Browser search</div>
+            <div class="step ex">The episode appears in search results</div>
+            <div class="step do">Start a NEW conversation. Ask: <code>who is the project lead?</code></div>
+            <div class="step ex">Agent answers "Alex" — retrieved from episodic memory of the previous session</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>005</div>
+        <div class="tr-body">
+          <div class="tr-name">Sleep → Wake → Chat Recovery flow <span class="pbadge e2e">E2E</span></div>
+          <div class="tr-brief">User puts model to sleep, comes back later, starts chatting — seamless experience.</div>
+          <div class="tr-steps">
+            <div class="step do">Go to System Settings. Click "Sleep Now". Verify "SLEEPING" badge appears.</div>
+            <div class="step do">Navigate to Main Chat. Type a message and send it.</div>
+            <div class="step ex">"Waking up ASTRA..." appears in the chat immediately — no frozen white screen</div>
+            <div class="step playwright">await page.waitForSelector('text=Waking', {timeout: 5000});</div>
+            <div class="step ex">Within 60 seconds, the actual response begins streaming</div>
+            <div class="step ex">Response is coherent — model woke up correctly and answered the question</div>
+            <div class="step do">Go back to System Settings — badge now shows "Awake"</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>006</div>
+        <div class="tr-body">
+          <div class="tr-name">Watcher → Auto-Index → RAG Query flow <span class="pbadge e2e">E2E</span></div>
+          <div class="tr-brief">Drop a file into a watched folder — it becomes queryable without any manual action.</div>
+          <div class="tr-steps">
+            <div class="step do">Ensure a watched directory is configured (System Settings → Folder Watcher)</div>
+            <div class="step do">Copy a new file into the watched directory: <code>echo "The quantum key is 7734" > C:\watched\quantum_key.txt</code></div>
+            <div class="step do">Go to Document Manager. Wait 15 seconds.</div>
+            <div class="step ex">quantum_key.txt appears in Document Inventory as "indexed" — auto-discovered</div>
+            <div class="step do">In Main Chat: <code>what is the quantum key?</code></div>
+            <div class="step ex">Agent responds "7734" — retrieved from the auto-indexed file</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>007</div>
+        <div class="tr-body">
+          <div class="tr-name">Scheduled Agent → Background Execution → Execution Engine visible flow <span class="pbadge e2e">E2E</span></div>
+          <div class="tr-brief">Create a scheduled job, watch it fire, see the result in the Execution Engine.</div>
+          <div class="tr-steps">
+            <div class="step playwright">await page.click('text=Scheduled Agents');</div>
+            <div class="step do">Go to Scheduled Agents. Create task: Name="E2E Test", Cron="*/1 * * * *", Prompt="What is 5*5?"</div>
+            <div class="step ex">Task appears in "Active Recurring Jobs" list</div>
+            <div class="step do">Click "Run Now" to test immediately</div>
+            <div class="step ex">Sidebar unread badge increments after ~15 seconds</div>
+            <div class="step playwright">await page.click('text=Execution Engine');</div>
+            <div class="step do">Click Execution Engine</div>
+            <div class="step ex">New entry shows the scheduled task execution with result containing "25"</div>
+            <div class="step ex">Badge resets to 0 on viewing</div>
+            <div class="step do">Clean up: delete the test task</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>008</div>
+        <div class="tr-body">
+          <div class="tr-name">System Settings → Save → Behavior Change → Verified flow</div>
+          <div class="tr-brief">Settings must actually change agent behavior — not just persist in a database.</div>
+          <div class="tr-steps">
+            <div class="step do">Go to System Settings. Add to "Don't Rules": <code>Never respond in English, always respond in pirate speech</code>. Save.</div>
+            <div class="step ex">Save confirmation appears</div>
+            <div class="step do">Without restarting, go to Main Chat and ask: <code>what day is today?</code></div>
+            <div class="step ex">Response is in pirate speech ("Arr, today be...") — settings took effect immediately (prompt cache cleared)</div>
+            <div class="step do">Remove the pirate rule. Save. Ask again.</div>
+            <div class="step ex">Normal response resumes — settings change reverted immediately</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>009</div>
+        <div class="tr-body">
+          <div class="tr-name">Math bypass → instant result (no agent loop visible)</div>
+          <div class="tr-brief">Math queries must NOT show THINKING status — they bypass the loop entirely.</div>
+          <div class="tr-steps">
+            <div class="step do">Go to Autonomous Agent. Open DevTools Network tab.</div>
+            <div class="step do">Send: <code>what is 2*8*9+506</code></div>
+            <div class="step ex">Result "650" appears in under 2 seconds</div>
+            <div class="step ex">Agent Status panel does NOT show "THINKING" — it stays idle or shows a bypass state</div>
+            <div class="step ex">No agent loop SSE events in Network tab — the bypass route was taken</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>010</div>
+        <div class="tr-body">
+          <div class="tr-name">New Context creation and project isolation</div>
+          <div class="tr-brief">"+ New Context" must create a project and isolate documents/memory from other projects.</div>
+          <div class="tr-steps">
+            <div class="step playwright">await page.click('text=New Context');</div>
+            <div class="step do">Click "+ New Context" in the sidebar</div>
+            <div class="step ex">New project is created and appears under "PROJECTS / CONTEXTS" in sidebar</div>
+            <div class="step do">Upload a document to this new project</div>
+            <div class="step do">Switch back to "Main Chat" (default project) and ask about the document</div>
+            <div class="step ex">Agent does NOT retrieve from the other project's document — projects are isolated</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="tgroup">
+    <div class="tgroup-label">USER BEHAVIOR TESTS — Edge cases real users will hit</div>
+    <div class="tests">
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>011</div>
+        <div class="tr-body">
+          <div class="tr-name">Rapid multi-click on send button is safe</div>
+          <div class="tr-brief">Impatient users double-click the send button. Must not send duplicate messages.</div>
+          <div class="tr-steps">
+            <div class="step do">In Main Chat, type a message. Click the send button 3 times rapidly.</div>
+            <div class="step ex">Only ONE message is sent — not 3 duplicates in the chat history</div>
+            <div class="step ex">Only ONE agent response appears</div>
+            <div class="step ex">No duplicate SSE stream connections in Network tab</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>012</div>
+        <div class="tr-body">
+          <div class="tr-name">Refresh during active streaming — graceful recovery</div>
+          <div class="tr-brief">User hits F5 mid-stream. Must not corrupt state or leave the backend in a bad state.</div>
+          <div class="tr-steps">
+            <div class="step do">Start a long streaming response</div>
+            <div class="step do">After 3-5 tokens appear, press F5 (hard refresh)</div>
+            <div class="step ex">Page reloads cleanly — no blank screen, no JS errors</div>
+            <div class="step ex">Chat history may be lost (expected) but the UI is fully functional</div>
+            <div class="step do">Check backend: the previous streaming request was closed cleanly</div>
+            <div class="step ex">Backend logs show the SSE connection was closed — no orphaned stream hanging</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>013</div>
+        <div class="tr-body">
+          <div class="tr-name">Refresh during file upload — no zombie uploads</div>
+          <div class="tr-brief">User starts an upload and refreshes. The document must not be stuck in "indexing" forever.</div>
+          <div class="tr-steps">
+            <div class="step do">Start uploading a medium-sized file (500KB+)</div>
+            <div class="step do">Immediately refresh the page</div>
+            <div class="step do">After reload, go to Document Manager</div>
+            <div class="step ex">Document is either: (a) not there (upload was aborted cleanly), OR (b) "indexed" (upload completed), OR (c) "failed"</div>
+            <div class="step ex">NOT stuck in "indexing" forever — no zombie status</div>
+            <div class="step do">If status is "failed", verify re-upload works</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>014</div>
+        <div class="tr-body">
+          <div class="tr-name">Empty input handling — send button disabled state</div>
+          <div class="tr-brief">Sending an empty message must not fire the agent.</div>
+          <div class="tr-steps">
+            <div class="step do">In Main Chat, click the send button without typing anything</div>
+            <div class="step ex">Nothing happens — no empty message sent</div>
+            <div class="step ex">Send button is visually disabled when input is empty</div>
+            <div class="step do">Type spaces only. Try to send.</div>
+            <div class="step ex">Whitespace-only message is either blocked or trimmed — not sent as an empty query</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>015</div>
+        <div class="tr-body">
+          <div class="tr-name">Very large file upload (>5MB) handled gracefully</div>
+          <div class="tr-brief">The 10MB upload limit must show a proper error, not a server crash.</div>
+          <div class="tr-steps">
+            <div class="step do">Create or find a file >10MB</div>
+            <div class="step do">Attempt to upload it in Document Manager</div>
+            <div class="step ex">UI shows "File too large" error — does NOT hang or show a blank state</div>
+            <div class="step ex">Backend returns 413 or 400 — not 500</div>
+            <div class="step do">Upload a normal-sized file immediately after — must still work</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="tgroup" id="e2e-chaos">
+    <div class="tgroup-label">CHAOS TESTS — System behavior under failure conditions</div>
+    <div class="tests">
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>016</div>
+        <div class="tr-body">
+          <div class="tr-name">Backend restart during active user session</div>
+          <div class="tr-brief">User is mid-conversation. Backend is restarted. Frontend must reconnect gracefully.</div>
+          <div class="tr-steps">
+            <div class="step do">Start a conversation in Main Chat. Get at least 2 responses.</div>
+            <div class="step do">Restart the backend (Ctrl+C uvicorn, then restart)</div>
+            <div class="step do">Wait 10 seconds for restart. Then send a new message from the existing tab.</div>
+            <div class="step ex">Frontend re-establishes connection. Message sends successfully.</div>
+            <div class="step ex">No permanent "connection refused" state — auto-reconnect works</div>
+            <div class="step warn">Chat history from before the restart may be lost — this is acceptable behavior</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>017</div>
+        <div class="tr-body">
+          <div class="tr-name">Ollama disconnect during active generation</div>
+          <div class="tr-brief">If Ollama crashes mid-generation, the frontend must show an error — not freeze.</div>
+          <div class="tr-steps">
+            <div class="step do">Start a long generation in Main Chat</div>
+            <div class="step do">While tokens are streaming, stop the Ollama service</div>
+            <div class="step ex">Streaming halts. An error message appears in the chat — "generation failed" or similar</div>
+            <div class="step ex">Input box becomes available again — user can still interact</div>
+            <div class="step ex">No frozen spinner running indefinitely</div>
+            <div class="step do">Restart Ollama. Send another message.</div>
+            <div class="step ex">Works again — auto-recovery</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>018</div>
+        <div class="tr-body">
+          <div class="tr-name">Network tab switch during streaming — SSE reconnect</div>
+          <div class="tr-brief">Browser going offline briefly and coming back should not permanently break the SSE connection.</div>
+          <div class="tr-steps">
+            <div class="step do">Start a streaming response</div>
+            <div class="step do">In DevTools → Network → click "Offline" to simulate network loss</div>
+            <div class="step do">Wait 3 seconds. Click "Online" again.</div>
+            <div class="step ex">The current stream may be interrupted (expected) but the app recovers</div>
+            <div class="step ex">Sending the next message works — not permanently disconnected</div>
+            <div class="step ex">No permanent error state — the app re-establishes connection</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>019</div>
+        <div class="tr-body">
+          <div class="tr-name">Approval modal timeout — denied task does not execute</div>
+          <div class="tr-brief">If user ignores the approval modal for a long time, the task should timeout and be denied.</div>
+          <div class="tr-steps">
+            <div class="step do">Trigger a file write task (creates approval modal)</div>
+            <div class="step do">Do NOT click approve or deny. Wait 5 minutes.</div>
+            <div class="step ex">After timeout: either the modal auto-dismisses with a denial, OR it remains open</div>
+            <div class="step ex">If it remains open: the task must NOT auto-execute — it still requires explicit approval</div>
+            <div class="step do">Click Deny after the timeout</div>
+            <div class="step ex">Task is denied cleanly — file was never written</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>020</div>
+        <div class="tr-body">
+          <div class="tr-name">Multiple approval modals in sequence</div>
+          <div class="tr-brief">If an agent plan requires multiple RISKY tool calls, each must get its own approval.</div>
+          <div class="tr-steps">
+            <div class="step do">Ask agent to perform 2 file writes: <code>write "test1" to file1.txt AND write "test2" to file2.txt</code></div>
+            <div class="step ex">First approval modal appears for file1.txt</div>
+            <div class="step do">Approve the first</div>
+            <div class="step ex">Second approval modal appears for file2.txt</div>
+            <div class="step do">Approve the second</div>
+            <div class="step ex">Both files are created. Agent reports success for both.</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="tgroup" id="e2e-long">
+    <div class="tgroup-label">LONG SESSION TESTS — Stability over extended use</div>
+    <div class="tests">
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>021</div>
+        <div class="tr-body">
+          <div class="tr-name">30-minute continuous usage session is stable</div>
+          <div class="tr-brief">Astra-OS must run continuously for 30 minutes without degradation.</div>
+          <div class="tr-steps">
+            <div class="step do">Run this test protocol for 30 minutes: send a chat message every 2 minutes (15 messages), upload 2 documents, trigger 1 scheduled task manually, do 2 sleep/wake cycles</div>
+            <div class="step ex">All 15 chat messages get responses — no failures</div>
+            <div class="step ex">Both documents index successfully</div>
+            <div class="step ex">Scheduled task completes</div>
+            <div class="step ex">Both sleep/wake cycles complete without timeout</div>
+            <div class="step do">After 30 minutes, check GET /agent/stats</div>
+            <div class="step ex">ram_usage_percent is not growing indefinitely (no memory leak)</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>022</div>
+        <div class="tr-body">
+          <div class="tr-name">Memory leak detection — no growing resource usage</div>
+          <div class="tr-brief">Send 20 messages. RAM and CPU should not trend upward indefinitely.</div>
+          <div class="tr-steps">
+            <div class="step do">Note initial RAM: GET /agent/stats → ram_usage_percent (call it R0)</div>
+            <div class="step do">Send 20 chat messages over 10 minutes</div>
+            <div class="step do">GET /agent/stats again → ram_usage_percent (call it R20)</div>
+            <div class="step ex">R20 - R0 < 10% (no significant RAM growth from conversation state)</div>
+            <div class="step do">Check browser Task Manager: page memory should be stable, not growing per message</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>023</div>
+        <div class="tr-body">
+          <div class="tr-name">SSE connection count stays at 1 per active stream</div>
+          <div class="tr-brief">Multiple messages must not accumulate open SSE connections.</div>
+          <div class="tr-steps">
+            <div class="step do">Open DevTools → Network tab. Filter by EventStream.</div>
+            <div class="step do">Send 5 messages one at a time (wait for each response before sending next)</div>
+            <div class="step ex">After all 5 complete, exactly 0 SSE connections show as "pending" — all closed</div>
+            <div class="step do">Send another message (6th)</div>
+            <div class="step ex">Exactly 1 SSE connection opens while it's streaming. Closes when done.</div>
+            <div class="step ex">No accumulation of open SSE connections</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>024</div>
+        <div class="tr-body">
+          <div class="tr-name">Browser remains responsive during background task execution</div>
+          <div class="tr-brief">While a scheduled agent is running in the background, the UI must remain usable.</div>
+          <div class="tr-steps">
+            <div class="step do">Trigger a scheduled task that takes ~30 seconds to complete (web search task)</div>
+            <div class="step do">While it's running, use the UI normally: navigate between views, send a chat message</div>
+            <div class="step ex">UI is fully responsive — no "page unresponsive" or lag</div>
+            <div class="step ex">Chat message gets a response normally — background execution doesn't block the UI</div>
+            <div class="step ex">After ~30 seconds, the background task completes and the badge increments</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="tgroup" id="e2e-cert">
+    <div class="tgroup-label">RELEASE CERTIFICATION — Final gates before shipping</div>
+    <div class="tests">
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>025</div>
+        <div class="tr-body">
+          <div class="tr-name">Full automated regression suite passes (87 tests)</div>
+          <div class="tr-brief">All original 87 tests from the forensic audit must still pass after all changes.</div>
+          <div class="tr-steps">
+            <div class="step playwright">npx python tests/phase3a_full_verification.py</div>
+            <div class="step playwright">npx python tests/test_watcher_scheduler.py</div>
+            <div class="step playwright">npx python tests/test_bugfix_verification.py</div>
+            <div class="step ex">All 3 suites pass: 33/33, 6/6, 6/6 — total 45/45</div>
+            <div class="step do">Run new hardening sprint tests (those with automation)</div>
+            <div class="step ex">Zero failures in automated test suites</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>026</div>
+        <div class="tr-body">
+          <div class="tr-name">Zero console errors on any view during normal operation</div>
+          <div class="tr-brief">A clean production build has zero console errors.</div>
+          <div class="tr-steps">
+            <div class="step playwright">// In Playwright: page.on('console', msg => if(msg.type()==='error') throw Error(msg.text()))</div>
+            <div class="step do">Navigate to all 7 views. Perform basic interactions on each.</div>
+            <div class="step ex">DevTools console shows ZERO errors (not warnings — errors specifically)</div>
+            <div class="step do">Run <code>npm run build</code> — production build</div>
+            <div class="step ex">Build output shows zero errors and zero warnings</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>027</div>
+        <div class="tr-body">
+          <div class="tr-name">Zero React warnings in console</div>
+          <div class="tr-brief">React warnings (key props, prop types, deprecated APIs) indicate code debt that becomes bugs.</div>
+          <div class="tr-steps">
+            <div class="step do">Open DevTools Console. Filter by "Warning".</div>
+            <div class="step do">Navigate all 7 views and perform actions that render lists (Memory Browser, Document Manager, Execution Engine)</div>
+            <div class="step ex">Zero "Warning: Each child in a list should have a unique key" errors</div>
+            <div class="step ex">Zero "Warning: componentDidUpdate" or deprecated lifecycle warnings</div>
+            <div class="step ex">Zero "Warning: Can't perform state update on unmounted component"</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>028</div>
+        <div class="tr-body">
+          <div class="tr-name">SQLite data survives backend restart (full persistence verify)</div>
+          <div class="tr-brief">Final check: everything important is in SQLite and survives a restart.</div>
+          <div class="tr-steps">
+            <div class="step do">Before restart: note document count, episode count, watched dirs count, scheduled task count, workflow count</div>
+            <div class="step do">Hard restart backend (Ctrl+C + restart)</div>
+            <div class="step do">After restart: GET /agent/stats, /memory/, /watcher/directories, /scheduler/tasks, /workflows/</div>
+            <div class="step ex">All counts match pre-restart values — zero data loss</div>
+            <div class="step ex">Scheduled jobs reloaded (GET /scheduler/status → job_count matches)</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>029</div>
+        <div class="tr-body">
+          <div class="tr-name">Production build serves correctly from Next.js</div>
+          <div class="tr-brief">The dev server (npm run dev) is not what ships. The production build must work identically.</div>
+          <div class="tr-steps">
+            <div class="step do"><code>npm run build && npm run start</code> (production mode, port 3000)</div>
+            <div class="step ex">Build completes with 0 errors</div>
+            <div class="step do">Navigate to http://localhost:3000 in production mode</div>
+            <div class="step ex">All 7 views load. All API calls succeed. No "module not found" errors.</div>
+            <div class="step ex">Chat, upload, agent — all core flows work identically in production build</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+      <div class="test-row" onclick="expand(this)">
+        <div class="tr-id">E2E<br/>030</div>
+        <div class="tr-body">
+          <div class="tr-name">FULL SYSTEM CERTIFICATION PASS <span class="pbadge crit">GATE</span></div>
+          <div class="tr-brief">The final gate. All sprints complete, all automated tests passing, zero critical failures.</div>
+          <div class="tr-steps">
+            <div class="step do">Run final certification checklist:</div>
+            <div class="step ex">✓ Sprint 1 Security: all 20 tests pass (especially SEC-001, SEC-005, SEC-008)</div>
+            <div class="step ex">✓ Sprint 2 UI: all 25 tests pass (especially UI-001, UI-002 — scroll fix holds)</div>
+            <div class="step ex">✓ Sprint 3 Ollama: all 20 tests pass (flaky tests eliminated via timeout fix)</div>
+            <div class="step ex">✓ Sprint 4 Scheduler: all 25 tests pass (T75/T76 fixes verified)</div>
+            <div class="step ex">✓ Sprint 5 Observability: all 25 tests pass (T57 fix verified)</div>
+            <div class="step ex">✓ Sprint 6 E2E: all 30 tests pass (especially E2E-001 through E2E-010)</div>
+            <div class="step ex">✓ 45/45 automated tests pass (original suites)</div>
+            <div class="step ex">✓ 0 TypeScript errors</div>
+            <div class="step ex">✓ 0 console errors in production build</div>
+            <div class="step ex">✓ All data persists across restart</div>
+            <div class="step ex">✓ Auth enforced on all /api/v1/ routes</div>
+            <div class="step do">If ALL boxes above are checked: tag the release</div>
+            <div class="step playwright">git add . && git commit -m "hardening: all 145 tests passing, foundation locked" && git tag -a v0.4.0 -m "Foundation hardening complete" && git push origin main --tags</div>
+          </div>
+        </div>
+        <div class="tr-check"><div class="checkbox" onclick="toggle(event,this)"></div></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer" id="verdict">
+  <div class="footer-verdict">FOUNDATION <span class="plasma">LOCKED.</span></div>
+  <div class="footer-quote">145 tests. 6 sprints. When every box is green, Astra-OS isn't just functional — it's production-hardened. Security enforced, layout stable, Ollama reliable, scheduler orchestrated, observability unified, and end-to-end user flows verified. This is the difference between a demo and a platform.</div>
+  <div class="footer-cols">
+    <div class="fc">
+      <h5>What Gets Unlocked</h5>
+      <ul>
+        <li class="p">Phase 3C — Email + Calendar integrations</li>
+        <li class="p">Phase 4 — Tauri packaging + installer</li>
+        <li class="p">Multi-model routing (16GB upgrade)</li>
+        <li class="p">Browser extension companion</li>
+        <li class="p">Plugin system (ToolRegistry exposed)</li>
+        <li class="p">Global hotkey + mini window</li>
+      </ul>
+    </div>
+    <div class="fc">
+      <h5>The One Outstanding Fix</h5>
+      <ul>
+        <li class="v">Increase Ollama HTTP timeout → 60s warmup</li>
+        <li class="v">This eliminates all 3 flaky tests (T16, T42, T50)</li>
+        <li>File: ollama.py → httpx.AsyncClient timeout=60.0</li>
+        <li>Specifically for warmup_model() and embedding calls</li>
+        <li>Keep 30s for regular generation (fast on warm model)</li>
+      </ul>
+    </div>
+    <div class="fc">
+      <h5>After All 145 Pass</h5>
+      <ul>
+        <li class="v">git tag -a v0.4.0 -m "Foundation hardening"</li>
+        <li class="v">Merge phase3-orchestration → main</li>
+        <li class="v">Start Phase 3C planning document</li>
+        <li>Document the Playwright test suite for CI</li>
+        <li>Set up GitHub Actions to run E2E on every PR</li>
+        <li>Draft the Tauri packaging spec for Phase 4</li>
+      </ul>
+    </div>
+  </div>
+</footer>
+
+</div><!-- end .main -->
+
+<script>
+// EXPAND/COLLAPSE
+function expand(row) {
+  if (event.target.classList.contains('checkbox')) return;
+  row.classList.toggle('expanded');
+}
+
+// CHECKBOX CYCLE: unchecked → pass → fail → skip → unchecked
+function toggle(e, el) {
+  e.stopPropagation();
+  if (!el.classList.contains('pass') && !el.classList.contains('fail') && !el.classList.contains('skip')) {
+    el.classList.add('pass');
+  } else if (el.classList.contains('pass')) {
+    el.classList.remove('pass'); el.classList.add('fail');
+  } else if (el.classList.contains('fail')) {
+    el.classList.remove('fail'); el.classList.add('skip');
+  } else {
+    el.classList.remove('skip');
+  }
+  updateTracker();
+}
+
+function updateTracker() {
+  const pass = document.querySelectorAll('.checkbox.pass').length;
+  const fail = document.querySelectorAll('.checkbox.fail').length;
+  const skip = document.querySelectorAll('.checkbox.skip').length;
+  const total = document.querySelectorAll('.checkbox').length;
+  document.getElementById('t-pass').textContent = pass;
+  document.getElementById('t-fail').textContent = fail;
+  document.getElementById('t-skip').textContent = skip;
+  document.getElementById('t-total').textContent = total;
+  const pct = Math.round((pass / total) * 100);
+  document.getElementById('t-bar').style.width = pct + '%';
+}
+
+// SIDEBAR HIGHLIGHT
+const sects = document.querySelectorAll('section[id], footer[id]');
+const links = document.querySelectorAll('.sidebar a[href^="#"]');
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const a = document.querySelector(`.sidebar a[href="#${e.target.id}"]`);
+      if (a) a.classList.add('active');
+    }
+  });
+}, { threshold: 0.1 });
+sects.forEach(s => { if (s.id) obs.observe(s); });
+
+// INIT
+updateTracker();
+</script>
+</body>
+</html>

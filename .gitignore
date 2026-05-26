@@ -5,40 +5,53 @@
 .vscode/
 .idea/
 
+# Environment
+.env
+.env.*
+*.env
+backend/.env
+frontend/.env.local
+
+# Database — never commit live DB
+*.db
+*.db-shm
+*.db-wal
+backend/astra_os.db
+backend/astra_os_backup_phase1.db
+
+# ChromaDB vectors — large, regeneratable
+chroma_db/
+.chromadb/
+backend/chroma_db/
+
+# Uploads — user data, never commit
+backend/uploads/
+backend/temp_test_watched/
+backend/exports/
+backend/agent_output/
+backend/local_session.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Node
+node_modules/
+.next/
+*.log
+
+# Secrets
+*.key
+secrets.json
+user_rules.json
+
 # OS
 .DS_Store
 Thumbs.db
 desktop.ini
-
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-.venv/
-venv/
-env/
-
-# Secrets and local state — NEVER commit these
-backend/.env
-backend/local_session.json
-backend/astra_os.db
-backend/chroma_db/
-backend/uploads/
-backend/exports/
-backend/agent_output/
-
-# Test files (move to /tests/ in Phase 2 cleanup)
-backend/test_agent.py
-backend/test_ce.py
-backend/test_ce2.py
-backend/test_ce3.py
-backend/test_ce_genera*
-backend/bench_ollama.py
-
-# Frontend build artifacts
-frontend/.next/
-frontend/node_modules/
-frontend/.env.local
-
-# Logs
-*.log
