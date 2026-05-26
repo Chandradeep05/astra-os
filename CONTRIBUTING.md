@@ -6,7 +6,7 @@ To maintain the high quality and certification standards of the project, please 
 
 ## 🔬 Test Certification Standard
 
-ASTRA-OS maintains a rigorous **113-Test Certification Suite** covering:
+ASTRA-OS maintains a rigorous **Test Certification Suite** covering:
 - Route authentication enforcement
 - Python execution sandbox isolation
 - Ollama runtime lifecycle events
@@ -16,7 +16,7 @@ ASTRA-OS maintains a rigorous **113-Test Certification Suite** covering:
 - E2E Playwright tests
 
 > [!IMPORTANT]
-> **Any new feature or change must pass 100% of the 113 tests before a Pull Request can be merged.** Run the test suite locally to verify changes.
+> **Any new feature or change must pass 100% of the certification test suite before a Pull Request can be merged.** Run the test suite locally to verify changes.
 
 ---
 
