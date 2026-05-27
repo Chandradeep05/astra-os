@@ -1,23 +1,33 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { 
-  BarChart3, 
-  Clock, 
-  Database, 
-  FileText, 
-  Plus, 
-  Sparkles, 
-  Zap, 
+import {
+  Clock,
+  Database,
+  FileText,
+  Zap,
   ArrowRight,
   Activity,
-  ShieldCheck,
-  Cpu
+  Cpu,
+  Eye,
+  Layers,
+  Shield,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { api, Project } from "@/lib/api";
 import { WorkflowEngine } from "@/components/WorkflowEngine";
+import { useAstraStore } from "@/stores/useAstraStore";
+import { GlassPanel } from "@/components/ui/GlassPanel";
+import { StatusDot } from "@/components/ui/StatusDot";
+import { SystemLabel } from "@/components/ui/SystemLabel";
+
+/* ══════════════════════════════════════════════════════════════════════
+   DASHBOARD — Mission Control
+   
+   The command center overview of ASTRA OS.
+   Shows system telemetry, recent workspaces, and workflow engine.
+   ══════════════════════════════════════════════════════════════════════ */
 
 interface DashboardProps {
   onSelectProject: (id: string, label?: string) => void;
@@ -26,14 +36,7 @@ interface DashboardProps {
 export const Dashboard = ({ onSelectProject }: DashboardProps) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [liveStats, setLiveStats] = useState({
-    documents_indexed: 0,
-    episodic_memories: 0,
-    ollama_status: "disconnected",
-    model_name: "none",
-    ram_usage_percent: 0,
-    cpu_percent: 0,
-  });
+  const { telemetry } = useAstraStore();
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -49,187 +52,408 @@ export const Dashboard = ({ onSelectProject }: DashboardProps) => {
     fetchProjects();
   }, []);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const s = await api.getStats();
-        setLiveStats(s);
-      } catch (err) {
-        console.error("Failed to fetch dashboard stats:", err);
-      }
-    };
-    
-    fetchStats();
-    const interval = setInterval(fetchStats, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
   const stats = [
-    { 
-      label: "Neural Engine", 
-      value: liveStats.ollama_status === "connected" ? "Active" : "Offline", 
-      sub: liveStats.model_name, 
-      icon: Cpu, 
-      color: liveStats.ollama_status === "connected" ? "text-emerald-500" : "text-red-500" 
+    {
+      label: "Neural Engine",
+      value:
+        telemetry.ollama_status === "connected" ? "Online" : "Offline",
+      sub: telemetry.model_name !== "none" ? telemetry.model_name : "—",
+      icon: Cpu,
+      accent: "cyan" as const,
+      status:
+        telemetry.ollama_status === "connected"
+          ? ("online" as const)
+          : ("offline" as const),
     },
-    { 
-      label: "Knowledge Assets", 
-      value: String(liveStats.documents_indexed), 
-      sub: `${liveStats.episodic_memories} Memories`, 
-      icon: Database, 
-      color: "text-blue-500" 
+    {
+      label: "Knowledge Assets",
+      value: String(telemetry.documents_indexed),
+      sub: `${telemetry.episodic_memories} Memories`,
+      icon: Database,
+      accent: "purple" as const,
+      status: "online" as const,
     },
-    { 
-      label: "System CPU Load", 
-      value: `${liveStats.cpu_percent.toFixed(1)}%`, 
-      sub: "Processor Load", 
-      icon: Activity, 
-      color: "text-amber-500" 
+    {
+      label: "CPU Load",
+      value: `${telemetry.cpu_percent.toFixed(1)}%`,
+      sub: "Processor",
+      icon: Activity,
+      accent: "amber" as const,
+      percent: telemetry.cpu_percent,
     },
-    { 
-      label: "Memory Usage", 
-      value: `${liveStats.ram_usage_percent.toFixed(1)}%`, 
-      sub: "RAM Allocated", 
-      icon: ShieldCheck, 
-      color: "text-purple-500" 
+    {
+      label: "Memory",
+      value: `${telemetry.ram_usage_percent.toFixed(1)}%`,
+      sub: "RAM Allocated",
+      icon: Layers,
+      accent: "teal" as const,
+      percent: telemetry.ram_usage_percent,
     },
   ];
 
+  const accentColors = {
+    cyan: {
+      border: "border-l-[var(--color-accent-cyan)]",
+      icon: "text-[var(--color-accent-cyan)] bg-[var(--color-accent-cyan)]/10",
+      bar: "bg-[var(--color-accent-cyan)]",
+    },
+    purple: {
+      border: "border-l-[var(--color-accent-purple)]",
+      icon: "text-[var(--color-accent-purple)] bg-[var(--color-accent-purple)]/10",
+      bar: "bg-[var(--color-accent-purple)]",
+    },
+    amber: {
+      border: "border-l-[var(--color-warning)]",
+      icon: "text-[var(--color-warning)] bg-[var(--color-warning)]/10",
+      bar: "bg-[var(--color-warning)]",
+    },
+    teal: {
+      border: "border-l-[var(--color-accent-teal)]",
+      icon: "text-[var(--color-accent-teal)] bg-[var(--color-accent-teal)]/10",
+      bar: "bg-[var(--color-accent-teal)]",
+    },
+  };
+
   return (
-    <div className="h-full w-full overflow-y-auto bg-[#09090b] p-8 lg:p-12 space-y-12">
-      {/* Welcome Header */}
-      <header className="space-y-2">
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
+    <div className="h-full w-full overflow-y-auto bg-transparent p-8 lg:p-10 space-y-10 scrollbar-hide">
+      {/* ── Hero Header ──────────────────────────────────────── */}
+      <header className="space-y-3">
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 text-emerald-500"
         >
-          <Sparkles size={16} />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em]">System Overview</span>
+          <SystemLabel size="sm" color="cyan" icon={<Zap size={12} />}>
+            Command Center
+          </SystemLabel>
         </motion.div>
-        <motion.h1 
-          initial={{ opacity: 0, y: 10 }}
+        <motion.h1
+          initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="text-4xl lg:text-5xl font-black text-white tracking-tight italic uppercase"
+          transition={{ delay: 0.05 }}
+          className="text-3xl lg:text-4xl font-bold text-[var(--color-text-bright)] tracking-tight"
         >
-          Astra <span className="text-zinc-500 not-italic font-light">OS</span>
+          ASTRA{" "}
+          <span className="text-[var(--color-text-muted)] font-light">
+            OS
+          </span>
         </motion.h1>
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="text-[13px] text-[var(--color-text-muted)] max-w-lg"
+        >
+          {telemetry.ollama_status === "connected" ? (
+            <>
+              <span className="text-[var(--color-success)]">●</span>{" "}
+              {telemetry.model_name} active ·{" "}
+              {telemetry.documents_indexed} documents ·{" "}
+              {telemetry.episodic_memories} memories
+            </>
+          ) : (
+            <>
+              <span className="text-[var(--color-danger)]">●</span>{" "}
+              Neural engine offline — start Ollama to enable AI capabilities
+            </>
+          )}
+        </motion.p>
       </header>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* ── Telemetry Grid ───────────────────────────────────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, i) => (
           <motion.div
             key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 + i * 0.1 }}
-            className="glass p-6 rounded-[2rem] border border-white/5 space-y-4 group hover:border-white/10 transition-all"
+            transition={{ delay: 0.15 + i * 0.06 }}
           >
-            <div className={cn("w-12 h-12 rounded-2xl bg-white/[0.03] flex items-center justify-center border border-white/5", stat.color)}>
-              <stat.icon size={24} />
-            </div>
-            <div>
-              <h3 className="text-2xl font-bold text-white">{stat.value}</h3>
-              <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">{stat.label}</p>
-              <p className="text-[10px] text-zinc-600 mt-1">{stat.sub}</p>
-            </div>
+            <GlassPanel
+              intensity="surface"
+              padding="md"
+              rounded="xl"
+              className={cn(
+                "border-l-2 space-y-3 hover:border-white/10 transition-all duration-[var(--motion-hover)]",
+                accentColors[stat.accent].border
+              )}
+            >
+              <div className="flex items-center justify-between">
+                <div
+                  className={cn(
+                    "w-9 h-9 rounded-lg flex items-center justify-center",
+                    accentColors[stat.accent].icon
+                  )}
+                >
+                  <stat.icon size={18} />
+                </div>
+                {stat.status && (
+                  <StatusDot status={stat.status} size="sm" />
+                )}
+              </div>
+              <div>
+                <p className="text-xl font-bold text-[var(--color-text-bright)]">
+                  {stat.value}
+                </p>
+                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--color-text-muted)] mt-0.5">
+                  {stat.label}
+                </p>
+                <p className="text-[10px] text-[var(--color-text-muted)] font-terminal mt-0.5">
+                  {stat.sub}
+                </p>
+              </div>
+              {stat.percent !== undefined && (
+                <div className="h-1 w-full bg-[var(--color-surface)] rounded-full overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{
+                      width: `${Math.min(stat.percent, 100)}%`,
+                    }}
+                    transition={{ duration: 1.2, ease: "easeOut" }}
+                    className={cn(
+                      "h-full rounded-full",
+                      accentColors[stat.accent].bar
+                    )}
+                  />
+                </div>
+              )}
+            </GlassPanel>
           </motion.div>
         ))}
       </div>
 
+      {/* ── Main Content Grid ────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recent Projects */}
-        <section className="lg:col-span-2 space-y-12">
-          {/* Workflow Integration */}
+        {/* Left: Workflows + Recent Projects */}
+        <section className="lg:col-span-2 space-y-10">
+          {/* Workflow Engine */}
           <WorkflowEngine />
-          
-          <div className="space-y-6">
-            <h2 className="text-sm font-black text-zinc-400 uppercase tracking-[0.2em] flex items-center gap-2 pt-4 border-t border-white/5">
-              <Clock size={16} />
-              Recent Workspaces
-            </h2>
-            
-            <div className="space-y-4">
-            {isLoading ? (
-              <div className="h-40 glass rounded-[2rem] animate-pulse" />
-            ) : projects.slice(0, 4).map((proj, i) => (
-              <motion.div
-                key={proj.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 + i * 0.1 }}
-                onClick={() => onSelectProject(proj.id, proj.name)}
-                className="group glass p-5 rounded-[1.5rem] border border-white/5 flex items-center justify-between hover:border-white/20 transition-all cursor-pointer hover:translate-x-1"
-              >
-                <div className="flex items-center gap-4">
-                  <div className={cn(
-                    "w-12 h-12 rounded-xl flex items-center justify-center font-bold text-xl transition-all",
-                    proj.project_type === "research" ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" : 
-                    proj.project_type === "code" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : 
-                    "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                  )}>
-                    {proj.name[0].toUpperCase()}
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors uppercase tracking-tight">{proj.name}</h4>
-                    <p className="text-[10px] text-zinc-500 uppercase tracking-widest mt-0.5">{proj.project_type} • {new Date(proj.last_accessed_at).toLocaleDateString()}</p>
-                  </div>
-                </div>
-                <ArrowRight size={18} className="text-zinc-600 group-hover:text-white transition-all transform group-hover:translate-x-1" />
-              </motion.div>
-            ))}
-            
-            {!isLoading && projects.length === 0 && (
-              <div className="p-12 glass rounded-[2rem] border border-dashed border-white/10 text-center space-y-4">
-                <p className="text-zinc-500 font-medium">No active contexts found. Start by creating a new workspace.</p>
-                <button className="px-6 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-xs font-bold uppercase tracking-widest hover:bg-white/10 transition-all">
-                  Initialize First Context
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
 
-        {/* Neural Activity / Sidebar info */}
-        <section className="space-y-6">
-          <h2 className="text-sm font-black text-zinc-400 uppercase tracking-[0.2em] flex items-center gap-2">
-            <BarChart3 size={16} />
-            Context Density
-          </h2>
-          <div className="glass p-8 rounded-[2rem] border border-white/5 aspect-square flex flex-col justify-between overflow-hidden relative group">
-             <div className="space-y-4 z-10">
-                <div className="space-y-1">
-                   <div className="flex justify-between text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                      <span>RAG Accuracy</span>
-                      <span>98%</span>
-                   </div>
-                   <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                      <motion.div initial={{ width: 0 }} animate={{ width: "98%" }} transition={{ duration: 1.5 }} className="h-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-                   </div>
+          {/* Recent Workspaces */}
+          <div className="space-y-4">
+            <SystemLabel
+              size="sm"
+              icon={<Clock size={12} />}
+              className="pt-4 border-t border-[var(--color-border-subtle)]"
+            >
+              Recent Workspaces
+            </SystemLabel>
+
+            <div className="space-y-2">
+              {isLoading ? (
+                <div className="space-y-2">
+                  {[1, 2, 3].map((n) => (
+                    <div key={n} className="h-16 glass-surface rounded-xl animate-pulse" />
+                  ))}
                 </div>
-                <div className="space-y-1">
-                   <div className="flex justify-between text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                      <span>Agent Latency</span>
-                      <span>42ms</span>
-                   </div>
-                   <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                      <motion.div initial={{ width: 0 }} animate={{ width: "20%" }} transition={{ duration: 1.5, delay: 0.2 }} className="h-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
-                   </div>
-                </div>
-             </div>
-             
-             <div className="group-hover:scale-110 transition-transform duration-700">
-                <Zap className="text-zinc-800/20 w-32 h-32 absolute -bottom-4 -right-4" />
-                <div className="space-y-1">
-                   <p className="text-5xl font-black text-white italic tracking-tighter">X-10</p>
-                   <p className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.4em]">Neural Bandwidth</p>
-                </div>
-             </div>
+              ) : (
+                projects.slice(0, 5).map((proj, i) => (
+                  <motion.div
+                    key={proj.id}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 + i * 0.05 }}
+                  >
+                    <GlassPanel
+                      intensity="surface"
+                      padding="sm"
+                      rounded="lg"
+                      hover
+                      onClick={() => onSelectProject(proj.id, proj.name)}
+                      className="flex items-center justify-between group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={cn(
+                            "w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm",
+                            proj.project_type === "research"
+                              ? "bg-[var(--color-accent-purple)]/10 text-[var(--color-accent-purple)] border border-[var(--color-accent-purple)]/20"
+                              : proj.project_type === "code"
+                              ? "bg-[var(--color-accent-cyan)]/10 text-[var(--color-accent-cyan)] border border-[var(--color-accent-cyan)]/20"
+                              : "bg-[var(--color-success)]/10 text-[var(--color-success)] border border-[var(--color-success)]/20"
+                          )}
+                        >
+                          {proj.name[0]?.toUpperCase() || "?"}
+                        </div>
+                        <div>
+                          <p className="text-[13px] font-semibold text-[var(--color-text-bright)] group-hover:text-[var(--color-accent-cyan)] transition-colors">
+                            {proj.name}
+                          </p>
+                          <p className="text-[10px] text-[var(--color-text-muted)] font-terminal">
+                            {proj.project_type} ·{" "}
+                            {new Date(
+                              proj.last_accessed_at
+                            ).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <ArrowRight
+                        size={14}
+                        className="text-[var(--color-text-muted)] group-hover:text-[var(--color-accent-cyan)] group-hover:translate-x-0.5 transition-all"
+                      />
+                    </GlassPanel>
+                  </motion.div>
+                ))
+              )}
+
+              {!isLoading && projects.length === 0 && (
+                <GlassPanel
+                  intensity="surface"
+                  padding="lg"
+                  rounded="xl"
+                  className="text-center space-y-3 border-dashed"
+                >
+                  <p className="text-[13px] text-[var(--color-text-muted)]">
+                    No workspaces yet.
+                  </p>
+                  <button
+                    onClick={() => onSelectProject("default", "Default")}
+                    className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-accent-cyan)] hover:text-[var(--color-text-bright)] transition-colors"
+                  >
+                    + Create Workspace
+                  </button>
+                </GlassPanel>
+              )}
+            </div>
           </div>
         </section>
+
+        {/* Right: System Topology */}
+        <section className="space-y-4">
+          <SystemLabel size="sm" icon={<Eye size={12} />}>
+            System Topology
+          </SystemLabel>
+          <GlassPanel
+            intensity="surface"
+            padding="lg"
+            rounded="xl"
+            className="space-y-6"
+          >
+            {/* Node Map (CSS-based, Phase 1) */}
+            <div className="space-y-4">
+              <TopologyNode
+                label="Ollama"
+                status={
+                  telemetry.ollama_status === "connected"
+                    ? "online"
+                    : "offline"
+                }
+                description={
+                  telemetry.model_name !== "none"
+                    ? telemetry.model_name
+                    : "Not loaded"
+                }
+              />
+              <div className="w-px h-4 mx-auto" style={{ backgroundImage: 'linear-gradient(to bottom, var(--color-border-subtle) 50%, transparent 50%)', backgroundSize: '1px 4px', animation: 'flow-down 0.8s linear infinite' }} />
+              <TopologyNode
+                label="Agent"
+                status="online"
+                description="OODA Loop"
+              />
+              <div className="w-px h-4 mx-auto" style={{ backgroundImage: 'linear-gradient(to bottom, var(--color-border-subtle) 50%, transparent 50%)', backgroundSize: '1px 4px', animation: 'flow-down 0.8s linear infinite' }} />
+              <div className="grid grid-cols-2 gap-3">
+                <TopologyNode
+                  label="Memory"
+                  status="online"
+                  description={`${telemetry.episodic_memories} eps`}
+                  compact
+                />
+                <TopologyNode
+                  label="Documents"
+                  status="online"
+                  description={`${telemetry.documents_indexed} files`}
+                  compact
+                />
+              </div>
+            </div>
+
+            {/* Metrics */}
+            <div className="space-y-3 pt-4 border-t border-[var(--color-border-subtle)]">
+              <MetricBar label="Documents" percent={telemetry.documents_indexed > 0 ? Math.min(telemetry.documents_indexed * 10, 100) : 0} color="emerald" />
+              <MetricBar
+                label="CPU"
+                percent={telemetry.cpu_percent}
+                color="cyan"
+              />
+              <MetricBar
+                label="RAM"
+                percent={telemetry.ram_usage_percent}
+                color="purple"
+              />
+            </div>
+          </GlassPanel>
+        </section>
+      </div>
+    </div>
+  );
+};
+
+// ── Sub-components ──────────────────────────────────────────────────
+
+const TopologyNode = ({
+  label,
+  status,
+  description,
+  compact,
+}: {
+  label: string;
+  status: "online" | "offline";
+  description: string;
+  compact?: boolean;
+}) => (
+  <div
+    className={cn(
+      "glass-surface rounded-xl flex items-center gap-3",
+      compact ? "p-2.5" : "p-3"
+    )}
+  >
+    <StatusDot status={status} size="sm" />
+    <div className="min-w-0">
+      <p
+        className={cn(
+          "font-semibold text-[var(--color-text-bright)]",
+          compact ? "text-[11px]" : "text-[12px]"
+        )}
+      >
+        {label}
+      </p>
+      <p className="text-[9px] text-[var(--color-text-muted)] font-terminal truncate">
+        {description}
+      </p>
+    </div>
+  </div>
+);
+
+const MetricBar = ({
+  label,
+  percent,
+  color,
+}: {
+  label: string;
+  percent: number;
+  color: "cyan" | "purple" | "emerald";
+}) => {
+  const barColors = {
+    cyan: "bg-[var(--color-accent-cyan)]",
+    purple: "bg-[var(--color-accent-purple)]",
+    emerald: "bg-[var(--color-success)]",
+  };
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider font-bold">
+          {label}
+        </span>
+        <span className="text-[10px] text-[var(--color-text-body)] font-terminal font-semibold">
+          {percent.toFixed(1)}%
+        </span>
+      </div>
+      <div className="h-1 w-full bg-[var(--color-surface)] rounded-full overflow-hidden">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${Math.min(percent, 100)}%` }}
+          transition={{ duration: 1.2, ease: "easeOut" }}
+          className={cn("h-full rounded-full", barColors[color])}
+        />
       </div>
     </div>
   );

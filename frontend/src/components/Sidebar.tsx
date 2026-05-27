@@ -1,16 +1,69 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Plus, LayoutGrid, MessageSquare, Settings, Database, Code, Globe, User, Loader2, X, Cpu, FileText, Activity, Calendar } from "lucide-react";
+import {
+  Plus,
+  Zap,
+  MessageSquare,
+  Settings,
+  Database,
+  Loader2,
+  X,
+  Cpu,
+  FileText,
+  Activity,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Moon,
+  Sun,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { api, Project } from "@/lib/api";
-import { useAstraRuntime } from "@/hooks/useAstraRuntime";
+import { useAstraStore } from "@/stores/useAstraStore";
+import { StatusDot } from "@/components/ui/StatusDot";
+import { SystemLabel } from "@/components/ui/SystemLabel";
+
+/* ══════════════════════════════════════════════════════════════════════
+   SIDEBAR — Premium left rail navigation.
+   
+   Collapsed: 72px (icon-only)
+   Expanded: 260px (hover or pin)
+   
+   Includes runtime presence footer.
+   ══════════════════════════════════════════════════════════════════════ */
 
 interface SidebarProps {
   activeProject: string;
   onSelectProject: (id: string, label?: string) => void;
 }
+
+const NAV_SECTIONS = [
+  {
+    title: "Core",
+    items: [
+      { icon: Zap, label: "Command Center", id: "dashboard" },
+      { icon: Cpu, label: "Neural Agent", id: "agent" },
+      { icon: MessageSquare, label: "Chat Interface", id: "default" },
+    ],
+  },
+  {
+    title: "Intelligence",
+    items: [
+      { icon: Database, label: "Memory Cortex", id: "memory-browser" },
+      { icon: FileText, label: "Knowledge Base", id: "documents" },
+      { icon: Activity, label: "Telemetry", id: "tasks" },
+    ],
+  },
+  {
+    title: "Operations",
+    items: [
+      { icon: Calendar, label: "Scheduler", id: "scheduled-tasks" },
+      { icon: Settings, label: "Configuration", id: "settings" },
+    ],
+  },
+];
 
 export const Sidebar = ({ activeProject, onSelectProject }: SidebarProps) => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -18,7 +71,19 @@ export const Sidebar = ({ activeProject, onSelectProject }: SidebarProps) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
-  const { taskRunsUnreadCount, markTasksViewed } = useAstraRuntime();
+
+  const {
+    sidebarCollapsed,
+    toggleSidebar,
+    taskRunsUnreadCount,
+    markTasksViewed,
+    sleepStatus,
+    telemetry,
+    environmentState,
+  } = useAstraStore();
+
+  const [hovered, setHovered] = useState(false);
+  const expanded = !sidebarCollapsed || hovered;
 
   const fetchProjects = async () => {
     try {
@@ -38,7 +103,7 @@ export const Sidebar = ({ activeProject, onSelectProject }: SidebarProps) => {
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProjectName.trim()) return;
-    
+
     setIsCreating(true);
     try {
       const newProj = await api.createProject({ name: newProjectName });
@@ -53,186 +118,307 @@ export const Sidebar = ({ activeProject, onSelectProject }: SidebarProps) => {
     }
   };
 
-  const navItems = [
-    { icon: LayoutGrid, label: "Dashboard", id: "dashboard" },
-    { icon: Cpu, label: "Autonomous Agent", id: "agent" },
-    { icon: MessageSquare, label: "Main Chat", id: "default" },
-    { icon: FileText, label: "Document Manager", id: "documents" },
-    { icon: Database, label: "Memory Browser", id: "memory-browser" },
-    { icon: Activity, label: "Execution Engine", id: "tasks" },
-    { icon: Calendar, label: "Scheduled Agents", id: "scheduled-tasks" },
-  ];
+  // Derive status
+  const systemStatus = sleepStatus.sleeping
+    ? "sleeping"
+    : environmentState === "executing"
+    ? "executing"
+    : environmentState === "thinking"
+    ? "thinking"
+    : telemetry.ollama_status === "connected"
+    ? "online"
+    : "offline";
 
   return (
     <>
-      <aside className="w-64 h-full glass border-r border-white/5 flex flex-col z-50">
-        {/* Header / Brand */}
-        <div className="p-6 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-white text-black flex items-center justify-center border border-white/20 shadow-[0_0_15px_rgba(255,255,255,0.2)]">
-            <span className="text-sm font-bold">A</span>
+      <aside
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        className={cn(
+          "h-full flex flex-col z-40 shrink-0 border-r border-[var(--color-border-subtle)] bg-[var(--color-void)]/90 backdrop-blur-xl transition-all ease-in-out",
+          expanded ? "w-[260px]" : "w-[72px]",
+          "duration-[var(--motion-panel)]"
+        )}
+      >
+        {/* ── Header ────────────────────────────────────────────── */}
+        <div className="h-16 flex items-center px-4 gap-3 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-[var(--color-accent-cyan)]/10 border border-[var(--color-accent-cyan)]/20 flex items-center justify-center shrink-0">
+            <span className="text-sm font-black text-[var(--color-accent-cyan)]">A</span>
           </div>
-          <span className="text-lg font-bold tracking-tight text-white uppercase italic">ASTRA OS</span>
+          {expanded && (
+            <motion.div
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.15 }}
+              className="flex flex-col min-w-0"
+            >
+              <span className="text-[13px] font-bold text-[var(--color-text-bright)] tracking-tight uppercase">
+                ASTRA OS
+              </span>
+              <span className="text-[9px] font-terminal text-[var(--color-text-muted)] tracking-wider">
+                v0.4.0
+              </span>
+            </motion.div>
+          )}
         </div>
 
-        {/* New Project Button */}
-        <div className="px-4 mb-8">
-          <button 
+        {/* ── New Context Button ─────────────────────────────────── */}
+        <div className="px-3 mb-4">
+          <button
             onClick={() => setIsModalOpen(true)}
-            className="w-full py-2.5 rounded-xl bg-white text-black font-semibold flex items-center justify-center gap-2 hover:bg-zinc-200 transition-all active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+            className={cn(
+              "flex items-center justify-center gap-2 rounded-xl transition-all duration-[var(--motion-hover)] active:scale-95",
+              expanded
+                ? "w-full py-2.5 bg-[var(--color-accent-cyan)]/10 border border-[var(--color-accent-cyan)]/20 text-[var(--color-accent-cyan)] hover:bg-[var(--color-accent-cyan)]/15"
+                : "w-11 h-11 mx-auto bg-[var(--color-surface)] border border-[var(--color-border-subtle)] text-[var(--color-text-muted)] hover:text-[var(--color-accent-cyan)] hover:border-[var(--color-accent-cyan)]/30"
+            )}
           >
-            <Plus size={18} />
-            New Context
+            <Plus size={16} />
+            {expanded && (
+              <span className="text-[11px] font-bold uppercase tracking-wider">
+                New Context
+              </span>
+            )}
           </button>
         </div>
 
-        {/* Primary Navigation */}
-        <nav className="flex-1 px-3 space-y-1.5 overflow-y-auto">
-          <div className="px-3 mb-2">
-            <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Main</span>
-          </div>
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => {
-                onSelectProject(item.id, item.label);
-                // Clear unread badge when Execution Engine is opened
-                if (item.id === "tasks") markTasksViewed();
-              }}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 group relative",
-                activeProject === item.id 
-                  ? "bg-white/10 text-white border border-white/5 shadow-inner" 
-                  : "text-zinc-500 hover:bg-white/[0.03] hover:text-white"
+        {/* ── Navigation ─────────────────────────────────────────── */}
+        <nav className="flex-1 px-2 space-y-5 overflow-y-auto scrollbar-hide">
+          {NAV_SECTIONS.map((section) => (
+            <div key={section.title}>
+              {expanded && (
+                <div className="px-3 mb-1.5">
+                  <SystemLabel size="xs">{section.title}</SystemLabel>
+                </div>
               )}
-            >
-              {activeProject === item.id && (
-                <motion.div 
-                  layoutId="active-pill"
-                  className="absolute left-0 w-1 h-4 bg-white rounded-full ml-1"
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                />
-              )}
-              <item.icon size={18} className={cn(
-                "transition-colors duration-300",
-                activeProject === item.id ? "text-white" : "text-zinc-500 group-hover:text-zinc-300"
-              )} />
-              <span className="text-sm font-semibold tracking-tight">{item.label}</span>
-              {/* Unread badge for Execution Engine */}
-              {item.id === "tasks" && taskRunsUnreadCount > 0 && (
-                <span className="ml-auto flex items-center gap-1.5">
-                  <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-[10px] font-bold text-emerald-400 flex items-center justify-center">
-                    {taskRunsUnreadCount > 99 ? "99+" : taskRunsUnreadCount}
-                  </span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_rgba(16,185,129,0.6)]" />
-                </span>
-              )}
-            </button>
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  const isActive = activeProject === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        onSelectProject(item.id, item.label);
+                        if (item.id === "tasks") markTasksViewed();
+                      }}
+                      className={cn(
+                        "w-full flex items-center gap-3 py-2.5 rounded-xl transition-all duration-[var(--motion-hover)] group relative",
+                        expanded ? "px-3" : "px-0 justify-center",
+                        isActive
+                          ? "bg-[var(--color-surface-elevated)] text-[var(--color-text-bright)]"
+                          : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-body)]"
+                      )}
+                      title={!expanded ? item.label : undefined}
+                    >
+                      {/* Active indicator */}
+                      {isActive && (
+                        <motion.div
+                          layoutId="sidebar-active"
+                          className="absolute left-0 w-[3px] h-5 rounded-r-full bg-[var(--color-accent-cyan)]"
+                          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                        />
+                      )}
+                      <item.icon
+                        size={18}
+                        className={cn(
+                          "shrink-0 transition-colors",
+                          isActive
+                            ? "text-[var(--color-accent-cyan)]"
+                            : "group-hover:text-[var(--color-text-body)]"
+                        )}
+                      />
+                      {expanded && (
+                        <span className="text-[13px] font-semibold truncate">
+                          {item.label}
+                        </span>
+                      )}
+                      {/* Unread badge for Telemetry */}
+                      {item.id === "tasks" && taskRunsUnreadCount > 0 && (
+                        <span
+                          className={cn(
+                            "shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-[var(--color-accent-cyan)]/15 border border-[var(--color-accent-cyan)]/30 text-[9px] font-bold text-[var(--color-accent-cyan)] flex items-center justify-center",
+                            expanded ? "ml-auto" : "absolute -top-1 -right-1"
+                          )}
+                        >
+                          {taskRunsUnreadCount > 99
+                            ? "99+"
+                            : taskRunsUnreadCount}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           ))}
 
-          <div className="px-3 mt-6 mb-2">
-            <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest text-[8px]">Projects / Contexts</span>
-          </div>
-          
-          {isLoading ? (
-            <div className="flex justify-center p-4">
-              <Loader2 size={16} className="animate-spin text-zinc-600" />
+          {/* ── Workspaces ──────────────────────────────────────── */}
+          {expanded && (
+            <div>
+              <div className="px-3 mb-1.5">
+                <SystemLabel size="xs">Workspaces</SystemLabel>
+              </div>
+              <div className="space-y-0.5">
+                {isLoading ? (
+                  <div className="flex justify-center p-4">
+                    <Loader2
+                      size={14}
+                      className="animate-spin text-[var(--color-text-muted)]"
+                    />
+                  </div>
+                ) : (
+                  projects.map((proj) => {
+                    const isActive = activeProject === proj.id;
+                    return (
+                      <button
+                        key={proj.id}
+                        onClick={() => onSelectProject(proj.id, proj.name)}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-[var(--motion-hover)] group relative",
+                          isActive
+                            ? "bg-[var(--color-surface-elevated)] text-[var(--color-text-bright)]"
+                            : "text-[var(--color-text-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-body)]"
+                        )}
+                      >
+                        {isActive && (
+                          <motion.div
+                            layoutId="sidebar-active"
+                            className="absolute left-0 w-[3px] h-5 rounded-r-full bg-[var(--color-accent-cyan)]"
+                            transition={{
+                              type: "spring",
+                              stiffness: 400,
+                              damping: 30,
+                            }}
+                          />
+                        )}
+                        <div
+                          className={cn(
+                            "w-2 h-2 rounded-full shrink-0",
+                            proj.project_type === "research"
+                              ? "bg-[var(--color-accent-purple)]"
+                              : proj.project_type === "code"
+                              ? "bg-[var(--color-accent-cyan)]"
+                              : "bg-[var(--color-success)]"
+                          )}
+                        />
+                        <span className="text-[12px] font-medium truncate">
+                          {proj.name}
+                        </span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
             </div>
-          ) : (
-            projects.map((proj) => (
-              <button
-                key={proj.id}
-                onClick={() => onSelectProject(proj.id, proj.name)}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 group relative",
-                  activeProject === proj.id 
-                    ? "bg-white/10 text-white border border-white/5 shadow-inner" 
-                    : "text-zinc-500 hover:bg-white/[0.03] hover:text-white"
-                )}
-              >
-                {activeProject === proj.id && (
-                  <motion.div 
-                    layoutId="active-pill"
-                    className="absolute left-0 w-1 h-4 bg-white rounded-full ml-1"
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                  />
-                )}
-                <div className={cn(
-                  "w-2 h-2 rounded-full",
-                  proj.project_type === "research" ? "bg-purple-500" : 
-                  proj.project_type === "code" ? "bg-blue-500" : "bg-emerald-500"
-                )} />
-                <span className="text-sm font-semibold tracking-tight truncate">{proj.name}</span>
-              </button>
-            ))
           )}
         </nav>
 
-        {/* Bottom Profile / Settings */}
-        <div className="p-4 border-t border-white/5 space-y-1.5 bg-black/20">
-          <button 
-            onClick={() => onSelectProject("settings", "System Settings")}
+        {/* ── Runtime Presence Footer ─────────────────────────── */}
+        <div className="border-t border-[var(--color-border-subtle)] p-3 space-y-2 bg-[var(--color-void)]/50">
+          {/* Sleep toggle */}
+          {expanded && sleepStatus.sleeping && (
+            <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-[var(--color-accent-purple)]/5 border border-[var(--color-accent-purple)]/10">
+              <Moon size={12} className="text-[var(--color-accent-purple)]" />
+              <span className="text-[10px] font-terminal text-[var(--color-accent-purple)] uppercase tracking-wider">
+                Sleep Mode
+              </span>
+            </div>
+          )}
+
+          {/* Status bar */}
+          <div
             className={cn(
-              "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all group",
-              activeProject === "settings" ? "bg-white/10 text-white" : "text-zinc-500 hover:bg-white/5 hover:text-white"
+              "flex items-center gap-2",
+              expanded ? "px-2" : "justify-center"
             )}
           >
-            <Settings size={18} className={cn("transition-transform duration-500", activeProject === "settings" ? "rotate-45 text-white" : "group-hover:rotate-45 text-zinc-500 group-hover:text-white")} />
-            <span className="text-xs font-bold uppercase tracking-wider">System Settings</span>
-          </button>
-          <button className="w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/5 transition-all group cursor-pointer">
-            <div className="flex items-center gap-3">
-               <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-[10px] text-emerald-400 font-bold">JD</div>
-               <span className="text-xs font-bold text-white uppercase tracking-tight">Founder Mode</span>
+            <StatusDot status={systemStatus} size="sm" />
+            {expanded && (
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-terminal text-[var(--color-text-muted)] truncate uppercase tracking-wider">
+                  {telemetry.model_name !== "none"
+                    ? telemetry.model_name
+                    : "No Model"}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Founder badge */}
+          <div
+            className={cn(
+              "flex items-center gap-2 rounded-xl bg-[var(--color-surface)]/60 border border-[var(--color-border-subtle)] transition-all",
+              expanded ? "px-3 py-2" : "p-2 justify-center"
+            )}
+          >
+            <div className="w-6 h-6 rounded-full bg-[var(--color-success)]/15 border border-[var(--color-success)]/25 flex items-center justify-center text-[9px] text-[var(--color-success)] font-bold shrink-0">
+              F
             </div>
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-          </button>
+            {expanded && (
+              <span className="text-[10px] font-bold text-[var(--color-text-body)] uppercase tracking-wider">
+                Founder Mode
+              </span>
+            )}
+          </div>
         </div>
       </aside>
 
-      {/* New Project Modal */}
+      {/* ── New Project Modal ──────────────────────────────────── */}
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsModalOpen(false)}
               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-md glass border border-white/10 rounded-[2rem] p-8 shadow-2xl overflow-hidden"
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+              className="relative w-full max-w-md glass-elevated rounded-2xl p-8 shadow-2xl overflow-hidden"
             >
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-blue-500" />
+              <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-[var(--color-accent-cyan)] to-[var(--color-accent-purple)]" />
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-white">Create New Context</h3>
-                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-white/5 rounded-full text-zinc-400 hover:text-white transition-colors">
-                  <X size={20} />
+                <h3 className="text-lg font-bold text-[var(--color-text-bright)]">
+                  Initialize Context
+                </h3>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="p-2 hover:bg-white/5 rounded-xl text-[var(--color-text-muted)] hover:text-[var(--color-text-body)] transition-colors"
+                >
+                  <X size={18} />
                 </button>
               </div>
-              
+
               <form onSubmit={handleCreateProject} className="space-y-6">
                 <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Workspace Name</label>
-                  <input 
+                  <SystemLabel className="mb-2 block" size="xs">
+                    Workspace Name
+                  </SystemLabel>
+                  <input
                     autoFocus
                     type="text"
                     value={newProjectName}
                     onChange={(e) => setNewProjectName(e.target.value)}
-                    placeholder="e.g., Marketing Strategy"
-                    className="w-full bg-white/5 border border-white/5 rounded-2xl px-5 py-4 text-white placeholder:text-zinc-600 focus:ring-0 focus:border-white/20 transition-all font-medium"
+                    placeholder="e.g., Research Alpha"
+                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border-subtle)] rounded-xl px-4 py-3 text-[var(--color-text-bright)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent-cyan)]/40 transition-colors font-medium text-[14px]"
                   />
                 </div>
-                
-                <button 
+
+                <button
                   type="submit"
                   disabled={isCreating || !newProjectName.trim()}
-                  className="w-full py-4 rounded-[1.5rem] bg-white text-black font-bold flex items-center justify-center gap-2 hover:bg-zinc-200 transition-all disabled:opacity-50"
+                  className="w-full py-3.5 rounded-xl bg-[var(--color-accent-cyan)]/10 border border-[var(--color-accent-cyan)]/20 text-[var(--color-accent-cyan)] font-bold text-[12px] uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[var(--color-accent-cyan)]/15 transition-all disabled:opacity-40"
                 >
-                  {isCreating ? <Loader2 size={20} className="animate-spin" /> : "INITIALIZE CONTEXT"}
+                  {isCreating ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    "Initialize Context"
+                  )}
                 </button>
               </form>
             </motion.div>

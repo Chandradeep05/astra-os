@@ -22,6 +22,8 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { api, Project, EpisodicMemoryItem } from "@/lib/api";
+import { GlassPanel } from "@/components/ui/GlassPanel";
+import { SystemLabel } from "@/components/ui/SystemLabel";
 
 export const MemoryBrowser = () => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -122,25 +124,23 @@ export const MemoryBrowser = () => {
   };
 
   return (
-    <div className="h-full w-full overflow-y-auto bg-[#09090b] p-8 lg:p-12 space-y-10">
+    <div className="h-full w-full overflow-y-auto bg-transparent p-8 lg:p-10 space-y-10 scrollbar-hide">
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">
           <motion.div 
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 text-emerald-500"
           >
-            <Sparkles size={16} />
-            <span className="text-[10px] font-black uppercase tracking-[0.3em]">ASTRA Cognitive Storage</span>
+            <SystemLabel size="sm" color="purple" icon={<Database size={12} />}>Memory Cortex</SystemLabel>
           </motion.div>
           <motion.h1 
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-4xl lg:text-5xl font-black text-white tracking-tight italic uppercase"
+            transition={{ delay: 0.05 }}
+            className="text-3xl lg:text-4xl font-bold text-[var(--color-text-bright)] tracking-tight"
           >
-            Memory <span className="text-zinc-500 not-italic font-light">Browser</span>
+            Memory <span className="text-[var(--color-text-muted)] font-light">Cortex</span>
           </motion.h1>
         </div>
 
@@ -149,7 +149,7 @@ export const MemoryBrowser = () => {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.15 }}
-          className="flex items-center gap-3 bg-white/[0.02] border border-white/5 p-2 rounded-2xl"
+          className="flex items-center gap-3 glass-surface p-2 rounded-xl"
         >
           <FolderDot size={18} className="text-zinc-500 ml-2" />
           <select 
@@ -158,11 +158,11 @@ export const MemoryBrowser = () => {
               setSelectedProject(e.target.value);
               setOffset(0); // Reset page on project change
             }}
-            className="bg-transparent border-0 text-sm font-semibold text-white focus:ring-0 cursor-pointer pr-10 pl-1 uppercase tracking-wider"
+            className="bg-transparent border-0 text-sm font-semibold text-[var(--color-text-bright)] focus:ring-0 cursor-pointer pr-10 pl-1 uppercase tracking-wider"
           >
-            <option value="default" className="bg-[#09090b] text-white">Default Workspace</option>
+            <option value="default" className="bg-[var(--color-base)] text-[var(--color-text-bright)]">Default Workspace</option>
             {projects.map(proj => (
-              <option key={proj.id} value={proj.id} className="bg-[#09090b] text-white">
+              <option key={proj.id} value={proj.id} className="bg-[var(--color-base)] text-[var(--color-text-bright)]">
                 {proj.name}
               </option>
             ))}
