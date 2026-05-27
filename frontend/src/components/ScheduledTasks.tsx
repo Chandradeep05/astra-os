@@ -134,7 +134,7 @@ export const ScheduledTasks = () => {
   }
 
   return (
-    <div className="h-full w-full overflow-y-auto px-12 py-10 space-y-10 custom-scrollbar">
+    <div className="h-full w-full overflow-y-auto px-8 lg:px-10 py-8 space-y-10 scrollbar-hide">
       
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/5 pb-6">
@@ -274,7 +274,7 @@ export const ScheduledTasks = () => {
               </h3>
             </div>
 
-            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 scrollbar-hide">
               {tasks.length === 0 ? (
                 <div className="text-center py-12 text-zinc-500 border border-dashed border-white/5 rounded-[2rem]">
                   No scheduled agents found. Create one on the left.

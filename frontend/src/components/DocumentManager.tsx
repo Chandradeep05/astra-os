@@ -252,7 +252,7 @@ export const DocumentManager = ({ projectId }: DocumentManagerProps) => {
   );
 
   return (
-    <div className="h-full w-full overflow-y-auto bg-[#09090b] p-8 lg:p-12 space-y-12">
+    <div className="h-full w-full overflow-y-auto bg-transparent p-8 lg:p-10 space-y-10 scrollbar-hide">
       {/* Title */}
       <header className="space-y-2">
         <div className="flex items-center gap-2 text-emerald-500">

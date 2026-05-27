@@ -388,12 +388,12 @@ export const ChatInterface = ({
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-[#08080a] relative overflow-hidden">
+    <div className="flex flex-col h-full w-full bg-transparent relative overflow-hidden">
       {/* Dynamic Background */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-20%,#1e1b4b,transparent)] opacity-40 pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-20%,rgba(30,27,75,0.3),transparent)] pointer-events-none" />
 
       {/* Chat Header */}
-      <header className="h-20 border-b border-white/10 flex items-center justify-between px-8 backdrop-blur-2xl bg-black/40 sticky top-0 z-30 transition-all">
+      <header className="h-14 border-b border-[var(--color-border-subtle)] flex items-center justify-between px-6 backdrop-blur-xl bg-[var(--color-void)]/60 sticky top-0 z-30 transition-all">
         <div className="flex items-center gap-5">
           <div className="relative">
             <div
@@ -689,7 +689,7 @@ export const ChatInterface = ({
       </div>
 
       {/* Input Area */}
-      <div className="p-8 border-t border-white/5 bg-[#09090b] relative z-20">
+      <div className="p-6 border-t border-[var(--color-border-subtle)] bg-[var(--color-void)]/60 relative z-20">
         <div className="max-w-5xl mx-auto relative group">
           <div className="absolute inset-0 bg-white/[0.02] blur-3xl rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity duration-1000" />
 

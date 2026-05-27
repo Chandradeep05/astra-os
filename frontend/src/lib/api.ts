@@ -123,7 +123,16 @@ export async function authFetch(url: string, opts: RequestInit = {}): Promise<Re
     headers.set("Authorization", `Bearer ${_cachedToken}`);
   }
   
-  return fetch(url, { ...opts, headers });
+  try {
+    return await fetch(url, { ...opts, headers });
+  } catch (err) {
+    // Single retry on cold-start network errors, not on 4xx/5xx responses
+    if (err instanceof TypeError && err.message.includes("fetch")) {
+      await new Promise(r => setTimeout(r, 200));
+      return fetch(url, { ...opts, headers });
+    }
+    throw err;
+  }
 }
 
 export interface Workflow {

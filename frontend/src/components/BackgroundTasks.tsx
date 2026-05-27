@@ -142,7 +142,7 @@ export const BackgroundTasks = ({ projectId }: BackgroundTasksProps) => {
   });
 
   return (
-    <div className="h-full w-full overflow-y-auto bg-[#09090b] p-8 lg:p-12 space-y-12 pb-24">
+    <div className="h-full w-full overflow-y-auto bg-transparent p-8 lg:p-10 space-y-10 pb-24 scrollbar-hide">
       {/* Header */}
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
         <div className="space-y-2">
