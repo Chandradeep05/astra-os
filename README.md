@@ -5,7 +5,7 @@
 ---
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.4.0--certified-brightgreen?style=for-the-badge&logo=github" alt="Version" />
+  <img src="https://img.shields.io/badge/version-v0.5.1-brightgreen?style=for-the-badge&logo=github" alt="Version" />
   <img src="https://img.shields.io/badge/tests-113%2F113%20passed-success?style=for-the-badge&logo=jest" alt="Tests" />
   <img src="https://img.shields.io/badge/license-MIT-blue?style=for-the-badge" alt="License" />
   <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey?style=for-the-badge&logo=windows" alt="Platform" />
@@ -15,7 +15,33 @@
 
 ## 💡 What is ASTRA-OS?
 
-ASTRA-OS is a local AI runtime — not a chatbot wrapper. It runs a full autonomous **OTPAR agentic loop**, manages a **4-tier memory architecture**, indexes your filesystem in real-time with an active watcher, and schedules background autonomous agents. It does all of this completely offline, on your own local hardware.
+ASTRA-OS is a local AI runtime — not a chatbot wrapper. It runs a full autonomous **OTPAR agentic loop**, manages a **4-tier memory architecture**, indexes your filesystem in real-time with an active watcher, and schedules background autonomous agents. All processing, memory, and execution occur on local hardware.
+
+---
+
+## 🧭 Why ASTRA Exists
+
+Most AI tools today are cloud-dependent black boxes. Your data leaves your machine, your context is stored on someone else's server, and you have no visibility into what the system is actually doing.
+
+ASTRA-OS explores a different direction: a local-first AI runtime where memory, orchestration, automation, and execution happen entirely on your own hardware. No API keys required. No usage limits. No telemetry.
+
+The goal is not just chatting with an LLM. The goal is building a controllable, inspectable AI operating environment that works for you — not the other way around.
+
+---
+
+## 🖥️ Interface
+
+> Screenshots coming soon — the interface is fully built and running locally.
+> If you'd like to see it in action, clone the repo and run `npm run dev` in the frontend.
+
+<!-- 
+Uncomment and update paths once screenshots are added to docs/screenshots/:
+
+![Dashboard](docs/screenshots/dashboard.png)
+![Neural Agent](docs/screenshots/agent.png)
+![Memory Cortex](docs/screenshots/memory.png)
+![Command Palette](docs/screenshots/command-palette.png)
+-->
 
 ---
 
@@ -63,7 +89,7 @@ graph LR
 | **AI Runtime** | `Ollama` | Local LLM engine executing `qwen2.5:3b` and `nomic-embed-text`. |
 | **Agent Loop** | `OTPAR` | Observe, Think, Plan, Act, Reflect cycle. |
 | **Sandbox** | `RestrictedPython` | AST validation, memory bomb protection, and 8-second timeout. |
-| **Frontend** | `Next.js`, `TypeScript`, `Tailwind` | Ultra-responsive, premium interface with `Framer Motion` micro-animations. |
+| **Frontend** | `Next.js`, `TypeScript`, `Tailwind` | Responsive interface with `Framer Motion` transitions. |
 | **Automations** | `watchdog`, `APScheduler` | Debounced file watch auto-indexer + cron scheduling engine. |
 
 ---
@@ -153,6 +179,27 @@ For comprehensive details, refer to the [docs/audits/](./docs/audits/) folder.
 
 4. **Access the Runtime**
    Open http://localhost:3000 in your browser.
+
+---
+
+## 📡 Current Runtime Status
+
+Everything below is fully implemented and running locally:
+
+- OTPAR agentic loop with 7-tier bypass routing
+- SSE streaming chat with WebLLM offline fallback
+- ChromaDB vector memory with CrossEncoder reranking
+- Episodic memory persistence with importance scoring
+- Filesystem watcher with SHA-256 dedup and soft-delete
+- APScheduler autonomous agents with session isolation
+- Human-in-the-loop approval gates for risky tool calls
+- Auth enforcement on all API routes
+- 113/113 certification tests passing
+
+**Planned:**
+- Desktop packaging via Tauri (Phase 4)
+- Multi-model routing, 16GB+ (Phase 3C)
+- Email/calendar integrations (Phase 3C)
 
 ---
 
