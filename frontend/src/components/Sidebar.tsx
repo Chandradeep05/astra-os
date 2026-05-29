@@ -156,7 +156,7 @@ export const Sidebar = ({ activeProject, onSelectProject }: SidebarProps) => {
                 ASTRA OS
               </span>
               <span className="text-[9px] font-terminal text-[var(--color-text-muted)] tracking-wider">
-                v0.4.0
+                v0.5.1
               </span>
             </motion.div>
           )}

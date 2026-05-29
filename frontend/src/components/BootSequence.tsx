@@ -211,7 +211,7 @@ export const BootSequence = ({ children, onComplete }: BootSequenceProps) => {
                     className="mb-8"
                   >
                     <h1 className="font-terminal text-[var(--color-accent-cyan)] text-sm tracking-[0.3em] uppercase">
-                      ASTRA OS v0.4.0
+                      ASTRA OS v0.5.1
                     </h1>
                     <p className="font-terminal text-[var(--color-text-muted)] text-xs mt-1 tracking-wider">
                       // KERNEL INITIALIZATION

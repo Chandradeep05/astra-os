@@ -31,17 +31,21 @@ The goal is not just chatting with an LLM. The goal is building a controllable, 
 
 ## 🖥️ Interface
 
-> Screenshots coming soon — the interface is fully built and running locally.
-> If you'd like to see it in action, clone the repo and run `npm run dev` in the frontend.
+<p align="center">
+  <img src="docs/screenshots/Dashboard.jpeg" alt="Dashboard — Command Center" width="100%" />
+</p>
+<p align="center"><em>Command Center — Real-time system telemetry, workspace overview, and topology visualization.</em></p>
 
-<!-- 
-Uncomment and update paths once screenshots are added to docs/screenshots/:
+<br/>
 
-![Dashboard](docs/screenshots/dashboard.png)
-![Neural Agent](docs/screenshots/agent.png)
-![Memory Cortex](docs/screenshots/memory.png)
-![Command Palette](docs/screenshots/command-palette.png)
--->
+| | |
+|:---:|:---:|
+| ![Neural Agent](docs/screenshots/Neural_Agent.jpeg) | ![Memory Cortex](docs/screenshots/Memory_Cortex.jpeg) |
+| **Neural Agent** — OTPAR agentic loop with live thought telemetry. | **Memory Cortex** — Episodic memory browser with importance scoring. |
+| ![Knowledge Base](docs/screenshots/Knowledge_base.jpeg) | ![Scheduler](docs/screenshots/Scheduler.jpeg) |
+| **Knowledge Base** — Document manager with vector ingestion streams. | **Scheduler** — Cron-based autonomous agents with session isolation. |
+| ![Configuration](docs/screenshots/Configuration.jpeg) | ![Command Palette](docs/screenshots/command_pallete.jpeg) |
+| **Configuration** — Persona, rules, sleep mode, and watcher settings. | **Command Palette** — Quick-access navigation across all modules. |
 
 ---
 
