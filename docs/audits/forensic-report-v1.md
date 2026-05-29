@@ -37,11 +37,11 @@
 
 | File | Issue | Lines Changed |
 |------|-------|---------------|
-| [AstraAgent.tsx](file:///C:/Projects/astra-os/frontend/src/components/AstraAgent.tsx) | 3 raw `fetch()` calls (agent/run, approve, upload) → `authFetch()` | Import + 3 fetch calls |
-| [ChatInterface.tsx](file:///C:/Projects/astra-os/frontend/src/components/ChatInterface.tsx) | 1 raw `fetch()` for document upload → `authFetch()` | Import + 1 fetch call |
-| [DocumentManager.tsx](file:///C:/Projects/astra-os/frontend/src/components/DocumentManager.tsx) | 1 raw `fetch()` for upload + 1 `EventSource` SSE without auth | Import + fetch + SSE token param |
-| [api.ts](file:///C:/Projects/astra-os/frontend/src/lib/api.ts) | `authFetch`, `getAuthToken`, `API_BASE_URL` were private → exported | 4 exports added |
-| [main.py](file:///C:/Projects/astra-os/backend/main.py) | `enforce_auth` only checked `Authorization` header → now also checks `?token=` query param for SSE/EventSource | Middleware updated |
+| [AstraAgent.tsx](frontend/src/components/AstraAgent.tsx) | 3 raw `fetch()` calls (agent/run, approve, upload) → `authFetch()` | Import + 3 fetch calls |
+| [ChatInterface.tsx](frontend/src/components/ChatInterface.tsx) | 1 raw `fetch()` for document upload → `authFetch()` | Import + 1 fetch call |
+| [DocumentManager.tsx](frontend/src/components/DocumentManager.tsx) | 1 raw `fetch()` for upload + 1 `EventSource` SSE without auth | Import + fetch + SSE token param |
+| [api.ts](frontend/src/lib/api.ts) | `authFetch`, `getAuthToken`, `API_BASE_URL` were private → exported | 4 exports added |
+| [main.py](backend/main.py) | `enforce_auth` only checked `Authorization` header → now also checks `?token=` query param for SSE/EventSource | Middleware updated |
 
 ---
 

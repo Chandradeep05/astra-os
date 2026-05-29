@@ -27,9 +27,11 @@ backend/chroma_db/
 # Uploads — user data, never commit
 backend/uploads/
 backend/temp_test_watched/
-backend/exports/
-backend/agent_output/
 backend/local_session.json
+
+# Exports (generated output)
+exports/
+backend/exports/
 
 # Python
 __pycache__/
@@ -55,3 +57,16 @@ user_rules.json
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Deployment configs (not needed for local-first usage)
+render.yaml
+backend/render.yaml
+Procfile
+backend/Procfile
+runtime.txt
+backend/runtime.txt
+vercel.json
+frontend/vercel.json
+
+# Personal scripts
+scripts/checkpoint.bat

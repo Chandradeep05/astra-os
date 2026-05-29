@@ -130,7 +130,7 @@ For comprehensive details, refer to the [docs/audits/](./docs/audits/) folder.
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/your-username/astra-os.git
+   git clone https://github.com/Chandradeep05/astra-os.git
    cd astra-os
    ```
 

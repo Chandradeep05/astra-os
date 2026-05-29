@@ -26,7 +26,7 @@ ASTRA-OS maintains a rigorous **Test Certification Suite** covering:
 1. Fork the repository on GitHub.
 2. Clone your fork locally:
    ```bash
-   git clone https://github.com/your-username/astra-os.git
+   git clone https://github.com/Chandradeep05/astra-os.git
    cd astra-os
    ```
 

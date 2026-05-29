@@ -3,7 +3,7 @@
 > **Auditor Role:** Senior Developer + Senior Tester + Senior Debugger  
 > **Date:** 2026-05-26  
 > **Suite:** 113-Test Certification Suite (`astra-test-suite.html`)  
-> **Previous Report:** [forensic_report.md](file:///C:/Users/a4ama/.gemini/antigravity/brain/09099a2f-bc34-497b-832e-1310e5f935ac/forensic_report.md) (preserved in history)
+> **Previous Report:** See `forensic-report-v1.md` in this directory (preserved in history)
 
 ---
 
@@ -60,7 +60,7 @@ The first run identified **16 failures** across 4 sprints:
 
 ### 🐛 Fix 1: AstraAgent.tsx — 5 Bugs Fixed
 
-**File:** [AstraAgent.tsx](file:///c:/Projects/astra-os/frontend/src/components/AstraAgent.tsx)
+**File:** `frontend/src/components/AstraAgent.tsx`
 
 | Issue | Before | After |
 |-------|--------|-------|
@@ -88,7 +88,7 @@ The first run identified **16 failures** across 4 sprints:
 
 ### 🐛 Fix 2: audit_service.py — Approval Event Logging
 
-**File:** [audit_service.py](file:///c:/Projects/astra-os/backend/app/services/audit_service.py)
+**File:** `backend/app/services/audit_service.py`
 
 Added `log_approval()` method that writes `TOOL_APPROVAL` events to the audit trail:
 
@@ -105,7 +105,7 @@ Added `log_approval()` method that writes `TOOL_APPROVAL` events to the audit tr
 
 ### 🐛 Fix 3: agent.py — Wire Approval Logging
 
-**File:** [agent.py](file:///c:/Projects/astra-os/backend/app/api/agent.py)
+**File:** `backend/app/api/agent.py`
 
 Wired `audit_service.log_approval()` into the `POST /approve/{task_id}` endpoint:
 
@@ -123,7 +123,7 @@ Wired `audit_service.log_approval()` into the `POST /approve/{task_id}` endpoint
 
 ### 🐛 Fix 4: scheduler_service.py — Model Warmup Before Execution
 
-**File:** [scheduler_service.py](file:///c:/Projects/astra-os/backend/app/services/scheduler_service.py)
+**File:** `backend/app/services/scheduler_service.py`
 
 Added `ollama_service.warmup_model()` call in `_execute_task_with_timeout` before running the AgentLoop:
 
@@ -143,7 +143,7 @@ Added `ollama_service.warmup_model()` call in `_execute_task_with_timeout` befor
 
 ### 🐛 Fix 5: task_logger.py — Consistent Schema
 
-**File:** [task_logger.py](file:///c:/Projects/astra-os/backend/app/services/task_logger.py)
+**File:** `backend/app/services/task_logger.py`
 
 Added `created_at` field to the INSERT statement:
 
@@ -200,11 +200,11 @@ Added `created_at` field to the INSERT statement:
 
 | File | Lines Changed | Impact |
 |------|:------------:|--------|
-| [AstraAgent.tsx](file:///c:/Projects/astra-os/frontend/src/components/AstraAgent.tsx) | Full rewrite (348→301 lines) | 5 UI bugs fixed |
-| [audit_service.py](file:///c:/Projects/astra-os/backend/app/services/audit_service.py) | +12 lines | Approval audit trail |
-| [agent.py](file:///c:/Projects/astra-os/backend/app/api/agent.py) | +8 lines | Wire approval logging |
-| [scheduler_service.py](file:///c:/Projects/astra-os/backend/app/services/scheduler_service.py) | +8 lines | Model warmup before jobs |
-| [task_logger.py](file:///c:/Projects/astra-os/backend/app/services/task_logger.py) | 2 lines changed | Schema consistency |
+| `frontend/src/components/AstraAgent.tsx` | Full rewrite (348→301 lines) | 5 UI bugs fixed |
+| `backend/app/services/audit_service.py` | +12 lines | Approval audit trail |
+| `backend/app/api/agent.py` | +8 lines | Wire approval logging |
+| `backend/app/services/scheduler_service.py` | +8 lines | Model warmup before jobs |
+| `backend/app/services/task_logger.py` | 2 lines changed | Schema consistency |
 
 ---
 
@@ -220,5 +220,5 @@ Added `created_at` field to the INSERT statement:
 ---
 
 *Report generated: 2026-05-26T13:17:20Z*  
-*Test results: [test_results_113_v2.json](file:///C:/Users/a4ama/.gemini/antigravity/brain/09099a2f-bc34-497b-832e-1310e5f935ac/scratch/test_results_113_v2.json)*  
-*Previous report: [forensic_report.md](file:///C:/Users/a4ama/.gemini/antigravity/brain/09099a2f-bc34-497b-832e-1310e5f935ac/forensic_report.md)*
+*Test results: Archived in project CI artifacts*  
+*Previous report: See `forensic-report-v1.md` in this directory*

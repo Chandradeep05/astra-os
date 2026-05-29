@@ -31,6 +31,10 @@ uploads/
 # Exports (generated files)
 exports/
 
+# Runtime data (user-specific)
+local_session.json
+user_rules.json
+
 # IDE
 .vscode/
 .idea/
